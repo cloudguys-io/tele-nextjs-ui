@@ -90,7 +90,6 @@ export type TeleCallRoomProps = {
   controls?: ReactNode;
   className?: string;
   style?: CSSProperties;
-  id?: string;
 };
 
 export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(function TeleCallRoom(props, ref) {

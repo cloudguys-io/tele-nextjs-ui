@@ -224,7 +224,6 @@ type TeleCallRoomProps = {
     controls?: ReactNode;
     className?: string;
     style?: CSSProperties;
-    id?: string;
 };
 declare const TeleCallRoom: react.ForwardRefExoticComponent<TeleCallRoomProps & react.RefAttributes<TeleCallRoomHandle>>;
 
