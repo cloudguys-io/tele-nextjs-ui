@@ -5,7 +5,7 @@ A minimal Next.js App Router app using `@tele/nextjs-ui`: `app/call/[code]/page.
 The route handlers under `app/api/` and `lib/tele-dev.ts` are **example only**: they stand in for your real
 backend so the example can talk to a Tele API. They sign user tokens with `TELE_API_KEY` / `TELE_API_SECRET`
 from the environment and identify people by a random cookie. In your app, use your own session and a Tele
-server SDK, and keep the secret on the server.
+server SDK, and keep the secret on the server. The proxy also refuses requests whose `Host` isn't localhost.
 
 ```bash
 cp .env.example .env.local   # fill in the key and secret; TELE_EXAMPLE_PROXY=1 turns the proxy on

@@ -7,10 +7,11 @@
     "dev": "next dev -p 3210",
     "build": "next build",
     "start": "next start -p 3210",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@tele/call-ui": "github:cloudguys-io/tele-ui-pack#v0.2.0",
+    "@tele/call-ui": "git+https://github.com/cloudguys-io/tele-ui-pack.git#v0.2.1",
     "@tele/nextjs-ui": "github:cloudguys-io/tele-nextjs-ui#v0.1.0",
     "livekit-client": "2.23.0",
     "next": "16.4.4",

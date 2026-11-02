@@ -5,9 +5,10 @@
 // In your app, identify the person with your own session, and sign tokens with your server SDK
 // (tele-go, tele-fastapi, @tele/node). The API secret must never reach the browser.
 //
-// Everything here answers 404 unless TELE_EXAMPLE_PROXY=1 and the key and secret are set.
+// Everything here answers 404 unless TELE_EXAMPLE_PROXY=1 and the key and secret are set, and 403 unless the
+// request's Host is local (localhost, 127.0.0.1, [::1] or *.localhost), so it can't serve a deployed site.
 import { createHmac, randomBytes } from "node:crypto";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 const COOKIE = "tele_example_user";
 
@@ -41,12 +42,22 @@ async function currentUser(): Promise<{ id: string; name: string }> {
   return { id, name: `Guest ${id.slice(-4)}` };
 }
 
+/** True for localhost, 127.0.0.1, [::1] and *.localhost, with or without a port. */
+export function isLocalHost(host: string | null): boolean {
+  if (!host) return false;
+  const name = host.trim().toLowerCase().replace(/:\d+$/, "").replace(/^\[(.*)\]$/, "$1");
+  return name === "localhost" || name === "127.0.0.1" || name === "::1" || name.endsWith(".localhost");
+}
+
 const notFound = () => Response.json({ error: { code: "not_found", message: "example proxy disabled" } }, { status: 404 });
 
 /** Calls Tele as the current example user and returns Tele's response as is. */
 export async function forward(method: string, path: string, body?: unknown): Promise<Response> {
   const c = config();
   if (!c) return notFound();
+  if (!isLocalHost((await headers()).get("host"))) {
+    return Response.json({ error: { code: "forbidden", message: "the example proxy only answers on localhost" } }, { status: 403 });
+  }
   const token = userToken(c, await currentUser());
   let res: Response;
   try {

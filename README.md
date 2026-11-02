@@ -24,18 +24,19 @@ export default async function CallPage({ params }: { params: Promise<{ code: str
 Install it together with its peer dependencies, from the release tags:
 
 ```bash
-npm install github:cloudguys-io/tele-nextjs-ui#v0.1.0 github:cloudguys-io/tele-ui-pack#v0.2.0 livekit-client
+npm install github:cloudguys-io/tele-nextjs-ui#v0.1.0 github:cloudguys-io/tele-ui-pack#v0.2.1 livekit-client
 ```
 
 | Peer | Range |
 |---|---|
-| `@tele/call-ui` | `^0.2.0` (from `github:cloudguys-io/tele-ui-pack#v0.2.0`) |
+| `@tele/call-ui` | `^0.2.0`; install `github:cloudguys-io/tele-ui-pack#v0.2.1` |
 | `livekit-client` | `^2.15.0` |
-| `next` | `>=15 <17` (App Router) |
+| `next` | `>=16 <17` (App Router; tested with 16.4) |
 | `react`, `react-dom` | `^19` |
 
-`@tele/call-ui` is not on the npm registry, so install it in the same command (or first). If it is missing,
-npm tries the registry for the peer and fails. `dist/` is committed, so installing this package from git runs
+`@tele/call-ui` is not on the npm registry (the `@tele` scope there isn't ours), so install it from git in the
+same command, as above. It is declared as an optional peer so npm never tries to fetch it from the registry;
+it is still required at runtime. `dist/` is committed, so installing this package from git runs
 no build step. `@tele/call-ui` builds itself in a `prepare` script when npm fetches it from git.
 
 ## Your backend
@@ -141,13 +142,13 @@ export function Room({ callId }: { callId: string }) {
 | `leaveHref` | Where `router.push` goes after leaving. Default `/`. |
 | `onLeave(detail)` | Replaces the navigation. `detail.reason` is `left`, `room_deleted`, `removed`, `duplicate_identity`, `join_failure`, `disconnected` or `error`. |
 | `onJoined`, `onError`, `onParticipant`, `onChat` | The element's events (`tele-joined`, `tele-error`, `tele-participant`, `tele-chat`). |
-| `friendlyErrors` | Default `true`: join errors with a known code get friendly text in `lang` instead of Tele's message. |
+| `friendlyErrors` | Default `true`: join errors with a known code get friendly text in `lang` instead of Tele's message, which the call screen shows. The exception is `too_early`: the call screen always shows its own `tooEarly` label (change it with `strings.tooEarly`), so the "This call opens at ..." text only appears through `renderError`. |
 | `errorStrings` | Overrides for those texts. |
 | `renderError(error, retry)` | Render your own screen when joining fails. `retry()` mounts a fresh call screen. |
 | `controls` | Extra buttons in the control bar (the element's `controls` slot). |
 | `className`, `style` | On the `<tele-call>` element. Give it a height, for example `100dvh`. |
 
-The ref (`TeleCallRoomHandle`) has `leave()`, `setMicrophone(on)`, `setCamera(on)`, `phase` (`lobby`,
+The `ref` prop (React 19 style, a `TeleCallRoomHandle`) has `leave()`, `setMicrophone(on)`, `setCamera(on)`, `phase` (`lobby`,
 `joining`, `live`, `ended`, `error` or `left`) and `element` (the `<tele-call>` element, which also has `room`,
 the LiveKit `Room`).
 
@@ -156,7 +157,11 @@ different `key` to join another call.
 
 ### `<TeleInvitePreview>`
 
-Just the card: host, title, schedule (in the reader's time zone), whether they can join, and a Join button.
+Just the card: host, title, schedule, whether they can join, and a Join button.
+
+Times are shown in the reader's own time zone. The server render leaves each `<time dateTime="...">` empty
+(the server doesn't know the reader's zone) and the text fills in right after hydration, so a `preview`
+loaded in a server component never hydrates with the server's zone.
 
 ```tsx
 <TeleInvitePreview code={code} lang="bn" joinHref="/room/{callId}?code={code}" />
@@ -183,14 +188,15 @@ What it says for each `reason.code`:
 | `invite_not_found` (404) | This invite link isn't valid. | এই আমন্ত্রণ লিংকটি সঠিক নয়। |
 
 Join errors also cover `call_full`, `rate_limited`, `unauthenticated`, `forbidden`, `not_found` and
-`network_error`. Unknown codes show Tele's own message. For `too_early`, the card reloads the preview when the
-call opens, so Join turns on without a refresh.
+`network_error`, `bad_response` and `internal`. Unknown codes show the error's own message (Tele's `message`). For `too_early`, the card reloads the preview when the
+call opens, so Join turns on without a refresh. If the reader's clock runs ahead of Tele's and the reload still
+says `too_early`, it retries after 1, 2, 4 ... up to 30 seconds until the call is open.
 
 ## Hooks
 
 ```ts
-const { status, preview, error, canJoin, reload } = useInvitePreview(code, { previewUrl, init, initial, refreshWhenOpen });
-const { status, join, error, getJoin, reset } = useTeleJoin({ joinUrl, joinInit, getJoin, lang, friendlyErrors, strings });
+const { status, preview, error, canJoin, reload } = useInvitePreview(code, { previewUrl, fetchInit, initial, refreshWhenOpen });
+const { status, join, error, getJoin, reset } = useTeleJoin({ joinUrl, fetchInit, getJoin, lang, friendlyErrors, strings });
 ```
 
 - `useInvitePreview`: `status` is `loading`, `ready` or `error`; `error` is a `TeleApiError` for Tele errors.
@@ -248,7 +254,7 @@ test suite renders every component with `react-dom/server` in a Node environment
   backend should not forward requests for people who are not signed in.
 - Invite codes are bearer secrets for `any_client_user` calls. Don't log them.
 - The example app's `app/api/` routes and `lib/tele-dev.ts` are a local stand-in for your backend, off unless
-  `TELE_EXAMPLE_PROXY=1`. Don't deploy them.
+  `TELE_EXAMPLE_PROXY=1`, and they refuse any request whose `Host` is not localhost. Don't deploy them.
 
 ## Example and tests
 
