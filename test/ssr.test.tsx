@@ -11,7 +11,7 @@ import type * as KitModule from "../src/index.js";
 
 type Kit = typeof KitModule;
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: () => {} }) }));
+vi.mock("next/navigation.js", () => ({ useRouter: () => ({ push: () => {} }) }));
 
 const dist = fileURLToPath(new URL("../dist/index.js", import.meta.url));
 
@@ -43,11 +43,19 @@ describe("server rendering", () => {
     });
   }
 
+  it.skipIf(!existsSync(dist))("dist loads under plain Node ESM, without a bundler", async () => {
+    const { execFileSync } = await import("node:child_process");
+    const out = execFileSync(process.execPath, ["--input-type=module", "-e",
+      `const m = await import(${JSON.stringify(new URL("../dist/index.js", import.meta.url).href)});
+       console.log(typeof m.TeleJoinPage, typeof m.createJoinFetcher, m.DEFAULT_JOIN_URL);`], { encoding: "utf8" });
+    expect(out.trim()).toBe("function function /api/tele/invites/{code}/join");
+  });
+
   it("keeps \"use client\" at the top of every client module in dist", async () => {
     const { readFileSync, readdirSync } = await import("node:fs");
     const dir = fileURLToPath(new URL("../dist/", import.meta.url));
     if (!existsSync(dir)) return;
-    const client = ["TeleCallRoom.js", "TeleInvitePreview.js", "TeleJoinPage.js", "useTeleJoin.js", "useInvitePreview.js"];
+    const client = ["TeleCallRoom.js", "TeleInvitePreview.js", "TeleJoinPage.js", "useTeleJoin.js", "useInvitePreview.js", "LocalTime.js"];
     for (const f of readdirSync(dir).filter((n) => n.endsWith(".js"))) {
       const first = readFileSync(dir + f, "utf8").split("\n", 1)[0];
       if (client.includes(f)) expect(first, f).toBe('"use client";');

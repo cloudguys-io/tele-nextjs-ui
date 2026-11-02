@@ -86,12 +86,12 @@ type InvitePreview = {
 /** Either form a component accepts for getting the join response. */
 type JoinSource = {
     joinUrl: string;
-    joinInit?: RequestInit;
+    fetchInit?: RequestInit;
     getJoin?: never;
 } | {
     getJoin: () => Promise<JoinResponse>;
     joinUrl?: never;
-    joinInit?: never;
+    fetchInit?: never;
 };
 
 declare const en: {
@@ -120,6 +120,8 @@ declare const en: {
     unauthenticated: string;
     forbidden: string;
     network_error: string;
+    bad_response: string;
+    internal: string;
     fallback: string;
 };
 /** Every label used by the invite preview and join page. Placeholders look like `{name}`. */
@@ -224,8 +226,10 @@ type TeleCallRoomProps = {
     controls?: ReactNode;
     className?: string;
     style?: CSSProperties;
+    /** leave, setMicrophone, setCamera, phase and element. */
+    ref?: Ref<TeleCallRoomHandle>;
 };
-declare const TeleCallRoom: react.ForwardRefExoticComponent<TeleCallRoomProps & react.RefAttributes<TeleCallRoomHandle>>;
+declare function TeleCallRoom({ ref, ...props }: TeleCallRoomProps): react.JSX.Element;
 
 type TeleInvitePreviewProps = {
     /** The invite code from the link. */
@@ -271,8 +275,6 @@ type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | "errorS
     previewStyle?: CSSProperties;
     /** Called when the person presses Join, before the room mounts. */
     onJoinClick?: (preview: InvitePreview) => void;
-    /** Reaches the call room once it is shown (leave, setMicrophone, setCamera, phase). */
-    ref?: Ref<TeleCallRoomHandle>;
 };
 declare function TeleJoinPage(props: TeleJoinPageProps): react.JSX.Element;
 
@@ -280,7 +282,7 @@ type UseTeleJoinOptions = {
     /** Your backend's join endpoint, POSTed to. It returns Tele's join response or error body unchanged. */
     joinUrl?: string;
     /** Extra fetch options for `joinUrl`, such as headers. */
-    joinInit?: RequestInit;
+    fetchInit?: RequestInit;
     /** Your own join function, instead of `joinUrl`. Reject with a Tele error object to show its message. */
     getJoin?: () => Promise<JoinResponse>;
     /** Language of the friendly error text. Default `en`. */
@@ -308,7 +310,7 @@ type UseInvitePreviewOptions = {
     /** Your endpoint that forwards `GET /v1/invites/{code}` with the signed-in person's user token. */
     previewUrl?: string;
     /** Extra fetch options, such as headers. */
-    init?: RequestInit;
+    fetchInit?: RequestInit;
     /** Use this preview instead of fetching one (for example, loaded by a server component). */
     initial?: InvitePreview;
     /** Reload when a too_early call opens. Default true. */

@@ -1,13 +1,13 @@
 "use client";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
+import { useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { useRouter } from "next/navigation.js";
 import { TeleCall } from "@tele/call-ui/react";
 import { createChatHistoryLoader, createDiagnosticsReporter, createEndForAll, createRecordingToggle } from "./fetchers.js";
 import { resolveTheme } from "./theme.js";
 import { useTeleJoin } from "./useTeleJoin.js";
-const TeleCallRoom = forwardRef(function TeleCallRoom2(props, ref) {
+function TeleCallRoom({ ref, ...props }) {
   const router = useRouter();
   const el = useRef(null);
   const [mounted, setMounted] = useState(null);
@@ -15,7 +15,7 @@ const TeleCallRoom = forwardRef(function TeleCallRoom2(props, ref) {
   if (!props.getJoin && !props.joinUrl) throw new Error("TeleCallRoom: pass joinUrl or getJoin");
   const join = useTeleJoin({
     joinUrl: props.joinUrl,
-    joinInit: props.fetchInit,
+    fetchInit: props.fetchInit,
     getJoin: props.getJoin,
     lang: props.lang,
     friendlyErrors: props.friendlyErrors,
@@ -55,10 +55,10 @@ const TeleCallRoom = forwardRef(function TeleCallRoom2(props, ref) {
       return el.current;
     }
   }), []);
-  const setElement = (node) => {
+  const setElement = useCallback((node) => {
     el.current = node;
     setMounted((m) => m === node ? m : node);
-  };
+  }, []);
   const retry = () => {
     join.reset();
     setAttempt((n) => n + 1);
@@ -97,7 +97,7 @@ const TeleCallRoom = forwardRef(function TeleCallRoom2(props, ref) {
     ),
     props.controls != null && mounted ? createPortal(/* @__PURE__ */ jsx("span", { slot: "controls", style: { display: "contents" }, children: props.controls }), mounted) : null
   ] });
-});
+}
 export {
   TeleCallRoom
 };

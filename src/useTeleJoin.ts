@@ -11,7 +11,7 @@ export type UseTeleJoinOptions = {
   /** Your backend's join endpoint, POSTed to. It returns Tele's join response or error body unchanged. */
   joinUrl?: string;
   /** Extra fetch options for `joinUrl`, such as headers. */
-  joinInit?: RequestInit;
+  fetchInit?: RequestInit;
   /** Your own join function, instead of `joinUrl`. Reject with a Tele error object to show its message. */
   getJoin?: () => Promise<JoinResponse>;
   /** Language of the friendly error text. Default `en`. */
@@ -48,7 +48,7 @@ export function useTeleJoin(options: UseTeleJoinOptions): TeleJoinState {
 
   const getJoin = useCallback(async () => {
     const o = latest.current;
-    const source = o.getJoin ?? (o.joinUrl ? createJoinFetcher(o.joinUrl, o.joinInit) : null);
+    const source = o.getJoin ?? (o.joinUrl ? createJoinFetcher(o.joinUrl, o.fetchInit) : null);
     const id = ++run.current;
     setStatus("joining");
     setError(null);
@@ -82,7 +82,8 @@ export function useTeleJoin(options: UseTeleJoinOptions): TeleJoinState {
 
 function friendly(e: unknown, o: UseTeleJoinOptions): unknown {
   if (!(e instanceof TeleApiError) || o.friendlyErrors === false) return e;
-  // too_early keeps its code, so the element can still show its own label if the text is cleared.
+  // <tele-call> ignores `message` for too_early and always shows its own `tooEarly` label (change it with
+  // `strings.tooEarly`). The "opens at" text set here is only seen through renderError or your own UI.
   const text = reasonMessage(e.code, { lang: o.lang, opensAt: e.opensAt, strings: o.strings });
   return text ? e.withMessage(text) : e;
 }

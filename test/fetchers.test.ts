@@ -87,6 +87,12 @@ describe("createDiagnosticsReporter", () => {
     expect(JSON.parse(init!.body as string)).toEqual(body);
   });
 
+  it("keeps headers given as a Headers instance", async () => {
+    const f = mockFetch(() => new Response(null, { status: 204 }));
+    await createDiagnosticsReporter("/d/{callId}", () => "c1", { headers: new Headers({ "X-Csrf": "t" }) })("connected", body);
+    expect(f.mock.calls[0]![1]!.headers).toEqual({ Accept: "application/json", "Content-Type": "application/json", "x-csrf": "t" });
+  });
+
   it("rejects session_pending so the element retries", async () => {
     mockFetch(() => json({ error: { code: "session_pending", message: "no session yet" } }, 409));
     await expect(createDiagnosticsReporter("/d/{callId}", () => "c1")("snapshot", body)).rejects.toMatchObject({ code: "session_pending" });

@@ -4,7 +4,7 @@ import { TeleInvitePreview } from "../src/TeleInvitePreview.js";
 import { formatTime } from "../src/messages.js";
 import { json, mockFetch, preview } from "./helpers.js";
 
-vi.mock("next/link", () => ({
+vi.mock("next/link.js", () => ({
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => <a href={href} {...rest}>{children}</a>,
 }));
 
@@ -18,11 +18,13 @@ describe("TeleInvitePreview", () => {
   it("shows loading, then host, title, time and an enabled Join", async () => {
     mockFetch(() => json(preview()));
     const onJoin = vi.fn();
-    render(<TeleInvitePreview code="abc" onJoin={onJoin} />);
+    const { container } = render(<TeleInvitePreview code="abc" onJoin={onJoin} />);
     expect(screen.getByRole("status").textContent).toBe("Checking the invite...");
     await screen.findByRole("heading", { name: "Design review" });
     expect(screen.getByText("Rahim invited you to")).toBeTruthy();
-    expect(screen.getByText(`${formatTime("2026-10-20T04:00:00Z")} to ${formatTime("2026-10-20T04:45:00Z")}`)).toBeTruthy();
+    const time = container.querySelector(".tele-card__time")!;
+    expect(time.textContent).toBe(`${formatTime("2026-10-20T04:00:00Z")} to ${formatTime("2026-10-20T04:45:00Z")}`);
+    expect([...time.querySelectorAll("time")].map((t) => t.getAttribute("datetime"))).toEqual(["2026-10-20T04:00:00Z", "2026-10-20T04:45:00Z"]);
     expect(screen.getByRole("status").textContent).toBe("The call is open.");
     const join = screen.getByRole("button", { name: "Join the call" }) as HTMLButtonElement;
     expect(join.disabled).toBe(false);
@@ -86,10 +88,20 @@ describe("TeleInvitePreview", () => {
     await screen.findByRole("heading", { name: "Design review" });
   });
 
-  it("shows a generic message for unexpected errors", async () => {
-    mockFetch(() => new Response("oops", { status: 500 }));
+  it("explains bad_response and internal errors", async () => {
+    mockFetch(() => new Response("oops", { status: 502 }));
     render(<TeleInvitePreview code="x" />);
-    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Couldn't load this call."));
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("The server sent an answer we couldn't read. Try again."));
+    cleanup();
+    mockFetch(() => json({ error: { code: "internal", message: "boom" } }, 500));
+    render(<TeleInvitePreview code="x" lang="bn" />);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("আমাদের দিকে একটি সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।"));
+  });
+
+  it("shows the error's own message for unknown codes", async () => {
+    mockFetch(() => json({ error: { code: "brand_new", message: "Tele explains it" } }, 409));
+    render(<TeleInvitePreview code="x" />);
+    await waitFor(() => expect(screen.getByRole("alert").textContent).toBe("Tele explains it"));
   });
 
   it("renders Join as a link with joinHref", async () => {

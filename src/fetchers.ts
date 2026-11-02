@@ -1,6 +1,6 @@
 // Functions for <tele-call>'s properties, built from your backend's URLs. Server safe: no React, no window.
 // URL templates take {code}, {callId} and (for recording) {action}; values are URL-encoded.
-import { requestJson, TeleApiError } from "./errors.js";
+import { headersObject, requestJson, TeleApiError } from "./errors.js";
 import type { DiagnosticBody, DiagnosticKind, HistoryMessage, JoinResponse } from "./types.js";
 
 /** The default preview endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
@@ -55,7 +55,7 @@ export function createDiagnosticsReporter(
       method: "POST",
       keepalive: true,
       ...init,
-      headers: { "Content-Type": "application/json", ...(init?.headers as Record<string, string> | undefined) },
+      headers: { "Content-Type": "application/json", ...headersObject(init?.headers) },
       body: JSON.stringify(body),
     });
   };

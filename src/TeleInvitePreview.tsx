@@ -2,9 +2,10 @@
 // <TeleInvitePreview>: the card people see when they open an invite link. It loads the preview from your
 // backend, says whether they can join now (with a countdown for calls that open later) and offers Join.
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
-import Link from "next/link";
+import Link from "next/link.js";
 import { fillUrl } from "./fetchers.js";
-import { format, formatCountdown, formatTime, inviteStrings, reasonMessage, type InviteStrings } from "./messages.js";
+import { formatNodes, LocalTime } from "./LocalTime.js";
+import { format, formatCountdown, inviteStrings, reasonMessage, type InviteStrings } from "./messages.js";
 import { CSS, STYLE_HREF } from "./styles.js";
 import { resolveTheme, type ThemeProp } from "./theme.js";
 import type { InvitePreview } from "./types.js";
@@ -38,7 +39,7 @@ export type TeleInvitePreviewProps = {
 export function TeleInvitePreview(props: TeleInvitePreviewProps) {
   const { code, lang } = props;
   const s = inviteStrings(lang, props.strings);
-  const state = useInvitePreview(code, { previewUrl: props.previewUrl, init: props.fetchInit, initial: props.preview });
+  const state = useInvitePreview(code, { previewUrl: props.previewUrl, fetchInit: props.fetchInit, initial: props.preview });
   const { preview, error } = state;
   const now = useNow(preview?.reason?.code === "too_early" && !!preview.reason.opens_at);
   const { mode, style } = resolveTheme(props.theme, props.style);
@@ -48,26 +49,29 @@ export function TeleInvitePreview(props: TeleInvitePreviewProps) {
     const c = preview.call;
     const opensAt = preview.reason?.code === "too_early" ? preview.reason.opens_at : undefined;
     const left = opensAt && now !== null ? Math.max(0, (new Date(opensAt).getTime() - now) / 1000) : null;
+    const at = (iso: string) => <LocalTime iso={iso} lang={lang} />;
     const time = c.scheduled_start
       ? c.scheduled_end
-        ? format(s.timeRange, { start: formatTime(c.scheduled_start, lang), end: formatTime(c.scheduled_end, lang) })
-        : format(s.startsAt, { start: formatTime(c.scheduled_start, lang) })
+        ? formatNodes(s.timeRange, { start: at(c.scheduled_start), end: at(c.scheduled_end) })
+        : formatNodes(s.startsAt, { start: at(c.scheduled_start) })
       : s.instantCall;
     const notice = state.canJoin
       ? s.openNow
-      : reasonMessage(preview.reason?.code, { lang, opensAt, strings: props.strings }) ?? preview.reason?.message ?? s.fallback;
+      : opensAt
+        ? formatNodes(s.too_early, { time: at(opensAt) })
+        : reasonMessage(preview.reason?.code, { lang, strings: props.strings }) ?? preview.reason?.message ?? s.fallback;
     const joinHref = props.joinHref && !props.onJoin ? fillUrl(props.joinHref, { code, callId: c.id }) : null;
     body = (
       <>
         {c.host?.name ? <p className="tele-card__eyebrow">{format(s.invitedBy, { host: c.host.name })}</p> : null}
         <h1 className="tele-card__title">{c.title}</h1>
-        <p className="tele-card__time" suppressHydrationWarning>{time}</p>
+        <p className="tele-card__time">{time}</p>
         {props.children}
-        <p className="tele-card__notice" role="status" data-reason={state.canJoin ? undefined : preview.reason?.code} suppressHydrationWarning>
+        <p className="tele-card__notice" role="status" data-reason={state.canJoin ? undefined : preview.reason?.code}>
           {notice}
         </p>
         {left !== null && left > 0 ? (
-          <p className="tele-card__countdown" aria-live="off" suppressHydrationWarning>
+          <p className="tele-card__countdown" aria-live="off">
             {format(s.opensIn, { countdown: formatCountdown(left) })}
           </p>
         ) : null}
@@ -88,10 +92,12 @@ export function TeleInvitePreview(props: TeleInvitePreviewProps) {
     );
   } else if (state.status === "error" && error) {
     const code = (error as { code?: string }).code;
+    // Known codes get friendly text; anything else shows the error's own message.
+    const text = reasonMessage(code, { lang, strings: props.strings }) ?? (error.message || s.fallback);
     body = (
       <>
         <p className="tele-card__notice" role="alert" data-reason={code}>
-          {reasonMessage(code, { lang, strings: props.strings }) ?? s.fallback}
+          {text}
         </p>
         <div className="tele-card__actions">
           <button type="button" className="tele-btn tele-btn--quiet" onClick={state.reload}>{s.retry}</button>

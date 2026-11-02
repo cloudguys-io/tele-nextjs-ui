@@ -1,4 +1,4 @@
-import { requestJson, TeleApiError } from "./errors.js";
+import { headersObject, requestJson, TeleApiError } from "./errors.js";
 const DEFAULT_PREVIEW_URL = "/api/tele/invites/{code}";
 const DEFAULT_JOIN_URL = "/api/tele/invites/{code}/join";
 function fillUrl(template, vars) {
@@ -31,7 +31,7 @@ function createDiagnosticsReporter(template, callId, init) {
       method: "POST",
       keepalive: true,
       ...init,
-      headers: { "Content-Type": "application/json", ...init?.headers },
+      headers: { "Content-Type": "application/json", ...headersObject(init?.headers) },
       body: JSON.stringify(body)
     });
   };

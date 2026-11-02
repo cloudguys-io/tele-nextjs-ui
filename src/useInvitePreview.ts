@@ -10,7 +10,7 @@ export type UseInvitePreviewOptions = {
   /** Your endpoint that forwards `GET /v1/invites/{code}` with the signed-in person's user token. */
   previewUrl?: string;
   /** Extra fetch options, such as headers. */
-  init?: RequestInit;
+  fetchInit?: RequestInit;
   /** Use this preview instead of fetching one (for example, loaded by a server component). */
   initial?: InvitePreview;
   /** Reload when a too_early call opens. Default true. */
@@ -34,9 +34,9 @@ type Result = { key: string; code: string; preview: InvitePreview | null; error:
 
 export function useInvitePreview(code: string, options: UseInvitePreviewOptions = {}): InvitePreviewState {
   const { previewUrl = DEFAULT_PREVIEW_URL, initial, refreshWhenOpen = true } = options;
-  const init = useRef(options.init);
+  const init = useRef(options.fetchInit);
   useInsertionEffect(() => {
-    init.current = options.init;
+    init.current = options.fetchInit;
   });
   const [nonce, setNonce] = useState(0);
   const key = `${nonce}|${previewUrl}|${code}`;
@@ -71,14 +71,30 @@ export function useInvitePreview(code: string, options: UseInvitePreviewOptions 
   const error = same && result.key === key ? result.error : null;
   const status: InvitePreviewState["status"] = error ? "error" : preview ? "ready" : "loading";
 
+  // A too_early preview reloads when the call opens. If the reader's clock runs ahead of Tele's, the reload
+  // can still say too_early with an opens_at in the past: every such result re-arms the timer with a
+  // growing delay (1s, 2s, 4s ... 30s) until Tele says the call is open.
   const opensAt = preview?.reason?.code === "too_early" ? preview.reason.opens_at : undefined;
+  const early = useRef(0);
   useEffect(() => {
-    if (!refreshWhenOpen || !opensAt) return;
+    if (!refreshWhenOpen || !opensAt) {
+      early.current = 0;
+      return;
+    }
     const at = new Date(opensAt).getTime();
     if (Number.isNaN(at)) return;
-    const t = setTimeout(reload, Math.min(MAX_DELAY, Math.max(0, at - Date.now()) + 500));
+    const wait = at - Date.now();
+    let delay: number;
+    if (wait > 0) {
+      early.current = 0;
+      delay = wait + 500;
+    } else {
+      delay = Math.min(30_000, 1_000 * 2 ** early.current);
+      early.current++;
+    }
+    const t = setTimeout(reload, Math.min(MAX_DELAY, delay));
     return () => clearTimeout(t);
-  }, [opensAt, refreshWhenOpen, reload]);
+  }, [result, opensAt, refreshWhenOpen, reload]);
 
   return { status, preview, error, canJoin: status === "ready" && !!preview?.can_join_now, reload };
 }

@@ -21,7 +21,7 @@ describe("useInvitePreview", () => {
 
   it("uses a custom URL template and init", async () => {
     const f = mockFetch(() => json(preview({ can_join_now: false, reason: { code: "not_invited", message: "m" } })));
-    const { result } = renderHook(() => useInvitePreview("abc", { previewUrl: "/b/preview?code={code}", init: { headers: { "X-T": "1" } } }));
+    const { result } = renderHook(() => useInvitePreview("abc", { previewUrl: "/b/preview?code={code}", fetchInit: { headers: { "X-T": "1" } } }));
     await waitFor(() => expect(result.current.status).toBe("ready"));
     expect(result.current.canJoin).toBe(false);
     expect(f.mock.calls[0]![0]).toBe("/b/preview?code=abc");
@@ -66,6 +66,25 @@ describe("useInvitePreview", () => {
     await act(async () => { await vi.advanceTimersByTimeAsync(6_000); });
     await waitFor(() => expect(result.current.canJoin).toBe(true));
     expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps retrying with backoff when the reader's clock runs ahead of Tele's", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // Tele still says too_early, with an opens_at the local clock already passed.
+    const past = new Date(Date.now() - 2_000).toISOString();
+    let n = 0;
+    const f = mockFetch(() =>
+      json(++n < 4 ? preview({ can_join_now: false, reason: { code: "too_early", message: "m", opens_at: past } }) : preview()));
+    const { result } = renderHook(() => useInvitePreview("fast-clock"));
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    expect(result.current.canJoin).toBe(false);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); }); // 1s
+    await waitFor(() => expect(f).toHaveBeenCalledTimes(2));
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); }); // 2s
+    await waitFor(() => expect(f).toHaveBeenCalledTimes(3));
+    await act(async () => { await vi.advanceTimersByTimeAsync(4_000); }); // 4s
+    await waitFor(() => expect(result.current.canJoin).toBe(true));
+    expect(f).toHaveBeenCalledTimes(4);
   });
 
   it("starts over when the code changes", async () => {

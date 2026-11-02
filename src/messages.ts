@@ -27,6 +27,8 @@ const en = {
   unauthenticated: "Your session has expired. Sign in again.",
   forbidden: "You can't join this call.",
   network_error: "Couldn't reach the server. Check your connection and try again.",
+  bad_response: "The server sent an answer we couldn't read. Try again.",
+  internal: "Something went wrong on our side. Try again in a moment.",
   fallback: "Couldn't load this call.",
 };
 
@@ -59,6 +61,8 @@ const bn: InviteStrings = {
   unauthenticated: "আপনার সেশনের মেয়াদ শেষ। আবার সাইন ইন করুন।",
   forbidden: "আপনি এই কলে যোগ দিতে পারবেন না।",
   network_error: "সার্ভারে পৌঁছানো যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।",
+  bad_response: "সার্ভারের উত্তর পড়া যায়নি। আবার চেষ্টা করুন।",
+  internal: "আমাদের দিকে একটি সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।",
   fallback: "কলটি লোড করা যায়নি।",
 };
 
@@ -98,7 +102,7 @@ export function formatCountdown(seconds: number): string {
 
 const CODES = new Set<string>([
   "too_late", "call_ended", "call_cancelled", "not_invited", "invite_expired", "invite_revoked", "invite_exhausted",
-  "invite_not_found", "not_found", "call_full", "rate_limited", "unauthenticated", "forbidden", "network_error",
+  "invite_not_found", "not_found", "call_full", "rate_limited", "unauthenticated", "forbidden", "network_error", "bad_response", "internal",
 ]);
 
 /**

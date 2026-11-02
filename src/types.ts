@@ -90,5 +90,5 @@ export type InvitePreview = {
 
 /** Either form a component accepts for getting the join response. */
 export type JoinSource =
-  | { joinUrl: string; joinInit?: RequestInit; getJoin?: never }
-  | { getJoin: () => Promise<JoinResponse>; joinUrl?: never; joinInit?: never };
+  | { joinUrl: string; fetchInit?: RequestInit; getJoin?: never }
+  | { getJoin: () => Promise<JoinResponse>; joinUrl?: never; fetchInit?: never };

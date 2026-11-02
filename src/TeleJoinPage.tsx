@@ -1,11 +1,11 @@
 "use client";
 // <TeleJoinPage>: everything an `app/call/[code]/page.tsx` needs. It shows the invite preview, and once the
 // person presses Join, the call room (with its own lobby for camera and microphone).
-import { useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { DEFAULT_JOIN_URL, fillUrl } from "./fetchers.js";
 import type { InviteStrings } from "./messages.js";
 import { CSS, STYLE_HREF } from "./styles.js";
-import { TeleCallRoom, type TeleCallRoomHandle, type TeleCallRoomProps } from "./TeleCallRoom.js";
+import { TeleCallRoom, type TeleCallRoomProps } from "./TeleCallRoom.js";
 import { TeleInvitePreview } from "./TeleInvitePreview.js";
 import { resolveTheme } from "./theme.js";
 import type { InvitePreview } from "./types.js";
@@ -28,8 +28,6 @@ export type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | 
   previewStyle?: CSSProperties;
   /** Called when the person presses Join, before the room mounts. */
   onJoinClick?: (preview: InvitePreview) => void;
-  /** Reaches the call room once it is shown (leave, setMicrophone, setCamera, phase). */
-  ref?: Ref<TeleCallRoomHandle>;
 };
 
 export function TeleJoinPage(props: TeleJoinPageProps) {

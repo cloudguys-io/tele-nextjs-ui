@@ -24,6 +24,8 @@ const en = {
   unauthenticated: "Your session has expired. Sign in again.",
   forbidden: "You can't join this call.",
   network_error: "Couldn't reach the server. Check your connection and try again.",
+  bad_response: "The server sent an answer we couldn't read. Try again.",
+  internal: "Something went wrong on our side. Try again in a moment.",
   fallback: "Couldn't load this call."
 };
 const bn = {
@@ -52,6 +54,8 @@ const bn = {
   unauthenticated: "\u0986\u09AA\u09A8\u09BE\u09B0 \u09B8\u09C7\u09B6\u09A8\u09C7\u09B0 \u09AE\u09C7\u09AF\u09BC\u09BE\u09A6 \u09B6\u09C7\u09B7\u0964 \u0986\u09AC\u09BE\u09B0 \u09B8\u09BE\u0987\u09A8 \u0987\u09A8 \u0995\u09B0\u09C1\u09A8\u0964",
   forbidden: "\u0986\u09AA\u09A8\u09BF \u098F\u0987 \u0995\u09B2\u09C7 \u09AF\u09CB\u0997 \u09A6\u09BF\u09A4\u09C7 \u09AA\u09BE\u09B0\u09AC\u09C7\u09A8 \u09A8\u09BE\u0964",
   network_error: "\u09B8\u09BE\u09B0\u09CD\u09AD\u09BE\u09B0\u09C7 \u09AA\u09CC\u0981\u099B\u09BE\u09A8\u09CB \u09AF\u09BE\u09AF\u09BC\u09A8\u09BF\u0964 \u0987\u09A8\u09CD\u099F\u09BE\u09B0\u09A8\u09C7\u099F \u09B8\u0982\u09AF\u09CB\u0997 \u09A6\u09C7\u0996\u09C7 \u0986\u09AC\u09BE\u09B0 \u099A\u09C7\u09B7\u09CD\u099F\u09BE \u0995\u09B0\u09C1\u09A8\u0964",
+  bad_response: "\u09B8\u09BE\u09B0\u09CD\u09AD\u09BE\u09B0\u09C7\u09B0 \u0989\u09A4\u09CD\u09A4\u09B0 \u09AA\u09A1\u09BC\u09BE \u09AF\u09BE\u09AF\u09BC\u09A8\u09BF\u0964 \u0986\u09AC\u09BE\u09B0 \u099A\u09C7\u09B7\u09CD\u099F\u09BE \u0995\u09B0\u09C1\u09A8\u0964",
+  internal: "\u0986\u09AE\u09BE\u09A6\u09C7\u09B0 \u09A6\u09BF\u0995\u09C7 \u098F\u0995\u099F\u09BF \u09B8\u09AE\u09B8\u09CD\u09AF\u09BE \u09B9\u09AF\u09BC\u09C7\u099B\u09C7\u0964 \u098F\u0995\u099F\u09C1 \u09AA\u09B0\u09C7 \u0986\u09AC\u09BE\u09B0 \u099A\u09C7\u09B7\u09CD\u099F\u09BE \u0995\u09B0\u09C1\u09A8\u0964",
   fallback: "\u0995\u09B2\u099F\u09BF \u09B2\u09CB\u09A1 \u0995\u09B0\u09BE \u09AF\u09BE\u09AF\u09BC\u09A8\u09BF\u0964"
 };
 const INVITE_STRINGS = { en, bn };
@@ -92,7 +96,9 @@ const CODES = /* @__PURE__ */ new Set([
   "rate_limited",
   "unauthenticated",
   "forbidden",
-  "network_error"
+  "network_error",
+  "bad_response",
+  "internal"
 ]);
 function reasonMessage(code, opts = {}) {
   if (!code) return void 0;

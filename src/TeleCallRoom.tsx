@@ -1,9 +1,10 @@
 "use client";
 // <TeleCallRoom>: <TeleCall> from @tele/call-ui/react, wired for the Next.js App Router. Every prop can come
 // from a server component (URLs and strings), and leaving navigates with the router by default.
-import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useImperativeHandle, useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+// "next" has no exports map, so plain Node ESM needs the file name; Next.js resolves both the same way.
+import { useRouter } from "next/navigation.js";
 import { TeleCall } from "@tele/call-ui/react";
 import type { TeleApiError } from "./errors.js";
 import { createChatHistoryLoader, createDiagnosticsReporter, createEndForAll, createRecordingToggle } from "./fetchers.js";
@@ -90,9 +91,11 @@ export type TeleCallRoomProps = {
   controls?: ReactNode;
   className?: string;
   style?: CSSProperties;
+  /** leave, setMicrophone, setCamera, phase and element. */
+  ref?: Ref<TeleCallRoomHandle>;
 };
 
-export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(function TeleCallRoom(props, ref) {
+export function TeleCallRoom({ ref, ...props }: TeleCallRoomProps) {
   const router = useRouter();
   const el = useRef<TeleCallElement | null>(null);
   const [mounted, setMounted] = useState<TeleCallElement | null>(null);
@@ -102,7 +105,7 @@ export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(fu
 
   const join = useTeleJoin({
     joinUrl: props.joinUrl,
-    joinInit: props.fetchInit,
+    fetchInit: props.fetchInit,
     getJoin: props.getJoin,
     lang: props.lang,
     friendlyErrors: props.friendlyErrors,
@@ -118,6 +121,10 @@ export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(fu
   }, [fetchJoin]);
 
   const { chatHistoryUrl, diagnosticsUrl, recordingUrl, endForAllUrl, fetchInit } = props;
+  // The factories only store `id`; it is called later, from the element's requests, never during render.
+  // The element captures reportDiagnostic as soon as getJoin resolves, before any re-render, so the call id
+  // has to be read through a ref rather than from state. The compiler lint can't see that, hence the pragma.
+  /* eslint-disable react-hooks/refs, react-hooks/preserve-manual-memoization */
   const endpoints = useMemo(() => {
     const id = () => callId.current;
     return {
@@ -127,6 +134,7 @@ export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(fu
       endForAll: endForAllUrl ? createEndForAll(endForAllUrl, id, fetchInit) : undefined,
     };
   }, [chatHistoryUrl, diagnosticsUrl, recordingUrl, endForAllUrl, fetchInit]);
+  /* eslint-enable react-hooks/refs, react-hooks/preserve-manual-memoization */
 
   useImperativeHandle(ref, () => ({
     leave: async () => { await el.current?.leave(); },
@@ -136,10 +144,11 @@ export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(fu
     get element() { return el.current; },
   }), []);
 
-  const setElement = (node: TeleCallElement | null) => {
+  // Stable, so React doesn't detach and reattach the element (and re-render) on every render.
+  const setElement = useCallback((node: TeleCallElement | null) => {
     el.current = node;
     setMounted((m) => (m === node ? m : node));
-  };
+  }, []);
 
   const retry = () => {
     join.reset();
@@ -182,4 +191,4 @@ export const TeleCallRoom = forwardRef<TeleCallRoomHandle, TeleCallRoomProps>(fu
         : null}
     </>
   );
-});
+}

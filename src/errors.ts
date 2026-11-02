@@ -90,7 +90,8 @@ export async function requestJson<T>(url: string | URL, init?: RequestInit): Pro
   }
 }
 
-function headersObject(h: HeadersInit | undefined): Record<string, string> {
+/** Any HeadersInit as a plain object, so it can be spread under other headers. */
+export function headersObject(h: HeadersInit | undefined): Record<string, string> {
   if (!h) return {};
   if (typeof Headers !== "undefined" && h instanceof Headers) return Object.fromEntries(h.entries());
   if (Array.isArray(h)) return Object.fromEntries(h);

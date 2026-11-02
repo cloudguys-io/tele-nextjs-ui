@@ -5,9 +5,9 @@ import { DEFAULT_PREVIEW_URL, fetchInvitePreview, fillUrl } from "./fetchers.js"
 const MAX_DELAY = 2147e6;
 function useInvitePreview(code, options = {}) {
   const { previewUrl = DEFAULT_PREVIEW_URL, initial, refreshWhenOpen = true } = options;
-  const init = useRef(options.init);
+  const init = useRef(options.fetchInit);
   useInsertionEffect(() => {
-    init.current = options.init;
+    init.current = options.fetchInit;
   });
   const [nonce, setNonce] = useState(0);
   const key = `${nonce}|${previewUrl}|${code}`;
@@ -34,13 +34,26 @@ function useInvitePreview(code, options = {}) {
   const error = same && result.key === key ? result.error : null;
   const status = error ? "error" : preview ? "ready" : "loading";
   const opensAt = preview?.reason?.code === "too_early" ? preview.reason.opens_at : void 0;
+  const early = useRef(0);
   useEffect(() => {
-    if (!refreshWhenOpen || !opensAt) return;
+    if (!refreshWhenOpen || !opensAt) {
+      early.current = 0;
+      return;
+    }
     const at = new Date(opensAt).getTime();
     if (Number.isNaN(at)) return;
-    const t = setTimeout(reload, Math.min(MAX_DELAY, Math.max(0, at - Date.now()) + 500));
+    const wait = at - Date.now();
+    let delay;
+    if (wait > 0) {
+      early.current = 0;
+      delay = wait + 500;
+    } else {
+      delay = Math.min(3e4, 1e3 * 2 ** early.current);
+      early.current++;
+    }
+    const t = setTimeout(reload, Math.min(MAX_DELAY, delay));
     return () => clearTimeout(t);
-  }, [opensAt, refreshWhenOpen, reload]);
+  }, [result, opensAt, refreshWhenOpen, reload]);
   return { status, preview, error, canJoin: status === "ready" && !!preview?.can_join_now, reload };
 }
 export {

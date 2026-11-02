@@ -14,7 +14,7 @@ function useTeleJoin(options) {
   const run = useRef(0);
   const getJoin = useCallback(async () => {
     const o = latest.current;
-    const source = o.getJoin ?? (o.joinUrl ? createJoinFetcher(o.joinUrl, o.joinInit) : null);
+    const source = o.getJoin ?? (o.joinUrl ? createJoinFetcher(o.joinUrl, o.fetchInit) : null);
     const id = ++run.current;
     setStatus("joining");
     setError(null);

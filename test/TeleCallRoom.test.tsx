@@ -6,7 +6,7 @@ import { calls, last } from "./fake-tele-call.js";
 import type { TeleCallRoomHandle as Handle } from "../src/TeleCallRoom.js";
 
 const router = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock("next/navigation", () => ({ useRouter: () => router }));
+vi.mock("next/navigation.js", () => ({ useRouter: () => router }));
 vi.mock("@tele/call-ui/react", () => import("./fake-tele-call.js"));
 
 const { TeleCallRoom } = await import("../src/TeleCallRoom.js");
