@@ -143,6 +143,15 @@ stays same-origin:
 export default { rewrites: async () => [{ source: "/api/tele/:path*", destination: "http://localhost:3000/api/tele/:path*" }] };
 ```
 
+With a rewrite, the backend's peer is the Next.js server, not the browser, so call-id joins would send the Next
+server's IP to Tele. Have the backend read the client IP from the `X-Forwarded-For` header Next.js adds, and trust
+that header only from the Next.js server:
+
+- **tele-fastapi:** run uvicorn with `--proxy-headers --forwarded-allow-ips=<next server ip>`, or pass
+  `client_ip=` to `tele_join_router`.
+- **tele-go example:** replace `clientIP` with one that reads `X-Forwarded-For` when `r.RemoteAddr` is the Next.js
+  server.
+
 ## Components
 
 All components are client components (`"use client"` is kept at the top of each module in `dist/`), so you can
