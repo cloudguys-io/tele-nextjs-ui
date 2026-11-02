@@ -3,7 +3,7 @@
 //
 //   POST /api/tele/token                    user token for the signed-in person
 //   GET  /api/tele/invites/{code}           invite preview, as the person (user token)
-//   POST /api/tele/invites/{code}/join      invite join, as the person (user token)
+//   POST /api/tele/invites/{code}/join      invite join, service token carrying the person's IP and user agent
 //   POST /api/tele/calls/{id}/join          call join, service token carrying the person's IP and user agent
 //   GET  /api/tele/calls/{id}/messages      saved chat (after, limit passed through)
 //   POST /api/tele/calls/{id}/diagnostics   the call UI's diagnostics body, forwarded unchanged
@@ -83,6 +83,11 @@ export const badInviteCode = (code: string) => !CODE.test(code);
 /** The person's own IP, for service-token joins. Locally this is the loopback address. */
 export function clientIp(req: Headers): string {
   return req.get("x-forwarded-for")?.split(",")[0]?.trim() || req.get("x-real-ip") || "127.0.0.1";
+}
+
+/** The `user` of a service-token join: who is joining, and from where. */
+export function joinUser(ctx: Ctx) {
+  return { user_id: ctx.user.id, name: ctx.user.name, ip: clientIp(ctx.req), user_agent: ctx.req.get("user-agent") ?? "" };
 }
 
 /**

@@ -296,8 +296,7 @@ type UseTeleJoinOptions = {
     fetchInit?: RequestInit;
     /**
      * After a successful join through `joinUrl`, later joins (Rejoin, retry) POST here instead, with `{callId}`
-     * filled in from the first join response. Use the call-id route (`/api/tele/calls/{callId}/join`): it carries
-     * the person's IP, while an invite join through a backend records the backend's IP.
+     * filled in from the first join response, for example the call-id route `/api/tele/calls/{callId}/join`.
      */
     rejoinUrl?: string;
     /** Your own join function, instead of `joinUrl`. Reject with a Tele error object to show its message. */
@@ -346,11 +345,14 @@ declare function useInvitePreview(code: string, options?: UseInvitePreviewOption
 
 /** The default preview endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
 declare const DEFAULT_PREVIEW_URL = "/api/tele/invites/{code}";
-/** The default join endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
+/**
+ * The default invite join endpoint on your backend (a service-token join that carries the person's IP and user
+ * agent). `{code}` is replaced with the URL-encoded invite code.
+ */
 declare const DEFAULT_JOIN_URL = "/api/tele/invites/{code}/join";
 /**
  * The call-id join endpoint of the shared backend convention (a service-token join that carries the person's
- * IP). Used for rejoins after the first invite join. `{callId}` is replaced.
+ * IP and user agent). Used for rejoins after the first invite join. `{callId}` is replaced.
  */
 declare const DEFAULT_CALL_JOIN_URL = "/api/tele/calls/{callId}/join";
 /** Saved chat (`GET /v1/calls/{id}/messages`) in the shared backend convention. Opt in with `chatHistoryUrl`. */

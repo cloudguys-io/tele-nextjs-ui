@@ -57,6 +57,23 @@ describe.skipIf(!live)("live Tele API", () => {
     await expect(createChatHistoryLoader(`${url}/v1/calls/{callId}/messages`, auth(guest))(id)).resolves.toEqual([]);
   });
 
+  it("joins an invite with a service token on the person's behalf, as the backend routes do", async () => {
+    const { id, code } = await createCall(user("host"), "any_client_user");
+    const iat = Math.floor(Date.now() / 1000);
+    const b64 = (o: unknown) => Buffer.from(JSON.stringify(o)).toString("base64url");
+    const head = b64({ alg: "HS256", typ: "JWT" });
+    const body = b64({ iss: key, iat, nbf: iat, exp: iat + 120, tele: { scope: "service" } });
+    const svc = `${head}.${body}.${createHmac("sha256", secret!).update(`${head}.${body}`).digest("base64url")}`;
+    const guest = user("svc-guest");
+    const j = await createJoinFetcher(`${url}/v1/invites/${code}/join`, {
+      headers: { Authorization: `Bearer ${svc}`, "Content-Type": "application/json", "X-Client-Platform": "web" },
+      body: JSON.stringify({ user: { user_id: guest, name: "Guest", ip: "203.0.113.7", user_agent: "tele-nextjs-ui-test" } }),
+    })();
+    expect(j.call.id).toBe(id);
+    expect(j.role).toBe("participant");
+    expect(j.token).toBeTruthy();
+  });
+
   it("explains not_invited in the preview and rejects the join with it", async () => {
     const { code } = await createCall(user("host"), "listed_only");
     const stranger = user("stranger");

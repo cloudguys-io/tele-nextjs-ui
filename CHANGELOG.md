@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+Follows the v0.2.0 shared backend routes. Tele now accepts service-token invite joins that carry the end user's
+IP, and its API allows any origin.
+
+- Both join routes are now documented as service-token joins carrying the person's IP and user agent, so Tele
+  records the person's own IP for invite joins too. The README no longer says browsers can't call Tele or that
+  invite joins record the backend's IP.
+- New in the README: a `getJoin` may call Tele directly with a user token from `/api/tele/token` (with
+  `credentials: "omit"`). The backend routes stay the default.
+- Example: the dev proxy's `/api/tele/invites/{code}/join` is a service-token join with the person's IP and
+  user agent, like `/api/tele/calls/{id}/join`.
+- No API changes to the components, hooks or helpers.
+
 ## 0.1.0
 
 First release.

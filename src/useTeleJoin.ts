@@ -14,8 +14,7 @@ export type UseTeleJoinOptions = {
   fetchInit?: RequestInit;
   /**
    * After a successful join through `joinUrl`, later joins (Rejoin, retry) POST here instead, with `{callId}`
-   * filled in from the first join response. Use the call-id route (`/api/tele/calls/{callId}/join`): it carries
-   * the person's IP, while an invite join through a backend records the backend's IP.
+   * filled in from the first join response, for example the call-id route `/api/tele/calls/{callId}/join`.
    */
   rejoinUrl?: string;
   /** Your own join function, instead of `joinUrl`. Reject with a Tele error object to show its message. */

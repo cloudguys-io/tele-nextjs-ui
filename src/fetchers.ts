@@ -6,12 +6,15 @@ import type { DiagnosticBody, DiagnosticKind, HistoryMessage, JoinResponse } fro
 /** The default preview endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
 export const DEFAULT_PREVIEW_URL = "/api/tele/invites/{code}";
 
-/** The default join endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
+/**
+ * The default invite join endpoint on your backend (a service-token join that carries the person's IP and user
+ * agent). `{code}` is replaced with the URL-encoded invite code.
+ */
 export const DEFAULT_JOIN_URL = "/api/tele/invites/{code}/join";
 
 /**
  * The call-id join endpoint of the shared backend convention (a service-token join that carries the person's
- * IP). Used for rejoins after the first invite join. `{callId}` is replaced.
+ * IP and user agent). Used for rejoins after the first invite join. `{callId}` is replaced.
  */
 export const DEFAULT_CALL_JOIN_URL = "/api/tele/calls/{callId}/join";
 

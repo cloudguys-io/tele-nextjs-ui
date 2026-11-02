@@ -38,7 +38,7 @@ jobs:
         run: npm pack --pack-destination "$RUNNER_TEMP"
       - name: Point the example at the packed package
         working-directory: example
-        run: npm pkg set "dependencies.@tele/nextjs-ui=file:$RUNNER_TEMP/tele-nextjs-ui-0.1.0.tgz"
+        run: npm pkg set "dependencies.@tele/nextjs-ui=file:$(ls "$RUNNER_TEMP"/tele-nextjs-ui-*.tgz)"
       - run: npm install --no-audit --no-fund
         working-directory: example
       - run: npm run build

@@ -24,7 +24,7 @@ export default async function CallPage({ params }: { params: Promise<{ code: str
 Install it together with its peer dependencies, from the release tags:
 
 ```bash
-npm install github:cloudguys-io/tele-nextjs-ui#v0.1.0 github:cloudguys-io/tele-ui-pack#v0.2.1 livekit-client
+npm install github:cloudguys-io/tele-nextjs-ui#v0.2.0 github:cloudguys-io/tele-ui-pack#v0.2.1 livekit-client
 ```
 
 | Peer | Range |
@@ -46,9 +46,9 @@ forwards to Tele as the signed-in person and returns Tele's status and JSON body
 
 | Method | Route | Does | Used here by |
 |---|---|---|---|
-| POST | `/api/tele/token` | user token for the signed-in person, `{"token", "expires_at"}` | not used by this package (native apps) |
+| POST | `/api/tele/token` | user token for the signed-in person, `{"token", "expires_at"}` | a `getJoin` that calls Tele directly (see below) |
 | GET | `/api/tele/invites/{code}` | invite preview, with the person's user token | `TeleInvitePreview`, `TeleJoinPage` (default `previewUrl`) |
-| POST | `/api/tele/invites/{code}/join` | invite join, with the person's user token | `TeleJoinPage` first join (default `joinUrl`) |
+| POST | `/api/tele/invites/{code}/join` | invite join, service token with `user: {user_id, ip, user_agent, name?, team?}` | `TeleJoinPage` first join (default `joinUrl`) |
 | POST | `/api/tele/calls/{id}/join` | call join, service token with `user: {user_id, ip, user_agent, name?, team?}` | `TeleJoinPage` rejoins (default `rejoinUrl`) |
 | GET | `/api/tele/calls/{id}/messages` | saved chat (`after`, `limit` passed through) | `chatHistoryUrl={DEFAULT_CHAT_HISTORY_URL}` |
 | POST | `/api/tele/calls/{id}/diagnostics` | forwards the call UI's diagnostics body | `diagnosticsUrl={DEFAULT_DIAGNOSTICS_URL}` |
@@ -72,14 +72,30 @@ own. The components show friendly English or Bangla text for them:
 | `502 upstream_unreachable` | Tele could not be reached |
 | `404 not_found` / `invite_not_found` | a malformed call id or invite code |
 
-**IP addresses.** Tele records the request's peer IP for user-token calls and trusts no customer proxy on hosted
-Tele. So a call-id join, a service-token join that carries the person's IP, records the right IP. An invite join
-through your backend records the backend's IP. Browsers can't avoid that, because Tele sends no CORS headers,
-so a web page can't call Tele itself. (Native apps can call `POST /v1/invites/{code}/join` directly with a user
-token from `/api/tele/token`.) That is why `<TeleJoinPage>` joins through the invite only the first time:
-after a successful join it knows the call id, and every rejoin (the call screen's Rejoin, or `retry` from
-`renderError`) goes through `/api/tele/calls/{callId}/join`. Set `rejoinUrl` on `<TeleCallRoom>` for the same
-behaviour.
+**IP addresses.** Both join routes are service-token joins that carry the person's IP and user agent, so Tele
+always records the person's own IP. Hosted Tele trusts no customer proxy's `X-Forwarded-For`, which is why the
+backend passes the IP in the join body. `<TeleJoinPage>` joins through the invite the first time; after that it
+knows the call id, and every rejoin (the call screen's Rejoin, or `retry` from `renderError`) goes through
+`/api/tele/calls/{callId}/join`. Set `rejoinUrl` on `<TeleCallRoom>` for the same behaviour.
+
+**Calling Tele directly.** The Tele API allows any origin (CORS, no credentials; auth only through the
+`Authorization` header), so a `getJoin` may also call Tele itself with a user token from your backend's
+`/api/tele/token`. Tele then records the browser's IP:
+
+```tsx
+<TeleCallRoom
+  getJoin={async () => {
+    const { token } = await fetch("/api/tele/token", { method: "POST" }).then((r) => r.json());
+    return createJoinFetcher(`https://tele-api.cloudguys.io/v1/invites/${encodeURIComponent(code)}/join`, {
+      credentials: "omit",
+      headers: { Authorization: `Bearer ${token}`, "X-Client-Platform": "web" },
+    })();
+  }}
+/>
+```
+
+The backend routes stay the default: they keep tokens out of the page entirely and give one place for your
+own checks.
 
 Recording and "End for all" are not part of the shared routes. If your backend has endpoints for them, pass
 `recordingUrl` (with `{callId}` and `{action}`, `start` or `stop`) and `endForAllUrl`. Their buttons only
@@ -143,7 +159,7 @@ stays same-origin:
 export default { rewrites: async () => [{ source: "/api/tele/:path*", destination: "http://localhost:3000/api/tele/:path*" }] };
 ```
 
-With a rewrite, the backend's peer is the Next.js server, not the browser, so call-id joins would send the Next
+With a rewrite, the backend's peer is the Next.js server, not the browser, so joins would send the Next
 server's IP to Tele. Have the backend read the client IP from the `X-Forwarded-For` header Next.js adds, and trust
 that header only from the Next.js server:
 
@@ -185,7 +201,7 @@ It takes every `TeleCallRoom` prop (except `joinUrl`, `getJoin`, `rejoinUrl` and
 |---|---|
 | `code` | The invite code. Required. |
 | `previewUrl`, `joinUrl` | Endpoint templates, defaults above. |
-| `rejoinUrl` | The call-id join for rejoins after the first invite join. Default `/api/tele/calls/{callId}/join`; `false` rejoins through the invite (which records your backend's IP). |
+| `rejoinUrl` | The call-id join for rejoins after the first invite join. Default `/api/tele/calls/{callId}/join`; `false` rejoins through the invite. |
 | `preview` | An `InvitePreview` you already loaded, for example in a server component. Skips the first fetch. |
 | `inviteStrings` | Overrides for the card and join-error texts (`InviteStrings`). |
 | `previewExtra` | Content inside the card, under the title. |

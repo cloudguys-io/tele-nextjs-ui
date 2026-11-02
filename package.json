@@ -1,6 +1,6 @@
 {
   "name": "@tele/nextjs-ui",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Next.js App Router components for Tele calls: invite preview, join page and call room on top of @tele/call-ui",
   "type": "module",
   "main": "./dist/index.js",
