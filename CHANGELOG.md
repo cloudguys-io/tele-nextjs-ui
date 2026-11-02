@@ -8,6 +8,7 @@ First release.
 - `<TeleInvitePreview>`: the invite card for `GET /v1/invites/{code}`, with host, title, schedule, a message for every `reason.code`, a countdown for `too_early` that refreshes when the call opens (retrying with backoff if the reader's clock runs ahead), times in the reader's time zone filled in after hydration, and a Join button or link.
 - `<TeleJoinPage>`: preview, then room, for `app/call/[code]/page.tsx`. Every prop can come from a server component.
 - Hooks `useTeleJoin` and `useInvitePreview`; helpers `createJoinFetcher`, `createChatHistoryLoader`, `createDiagnosticsReporter`, `createRecordingToggle`, `createEndForAll`, `fetchInvitePreview`, `fillUrl`, `TeleApiError`, `errorFromResponse`, `asTeleError`, `reasonMessage` and `resolveTheme`.
+- Follows the shared Tele backend routes: `DEFAULT_PREVIEW_URL`, `DEFAULT_JOIN_URL`, `DEFAULT_CALL_JOIN_URL`, `DEFAULT_CHAT_HISTORY_URL`, `DEFAULT_DIAGNOSTICS_URL`. `<TeleJoinPage>` joins through the invite once, then rejoins through the call-id route (`rejoinUrl`), which carries the person's IP. Friendly en/bn text for the backend's `unauthenticated` and `upstream_*` errors.
 - `fetchInit` is the one name for extra fetch options on every component and hook.
 - `next/navigation.js` and `next/link.js` imports, so `dist/` also loads under plain Node ESM.
 - Theming with the `--tele-*` variables through a `theme` object, `className` or `style`.

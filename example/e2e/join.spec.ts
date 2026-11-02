@@ -16,13 +16,36 @@ test("open an invite link, see the preview, join, go live, leave", async ({ page
   const call = page.locator("tele-call");
   await expect(call).toBeVisible();
   const diagnostics = page.waitForResponse((r) => r.url().includes("/diagnostics") && r.request().method() === "POST");
+  const inviteJoin = page.waitForResponse((r) => /\/api\/tele\/invites\/[^/]+\/join$/.test(r.url()));
   await call.locator('[part~="join"]').click();
+  const joined = await inviteJoin;
+  expect(joined.status()).toBe(200);
+  const callId = ((await joined.json()) as { call: { id: string } }).call.id;
   await expect.poll(() => call.evaluate((el) => (el as HTMLElement & { phase: string }).phase), { timeout: 30_000 }).toBe("live");
   await expect(call.locator('[part~="tile"]').first()).toBeVisible();
 
   // The diagnosticsUrl prop forwards the element's reports through the backend.
   const d = await diagnostics;
   expect([202, 204, 409], `diagnostics answered ${d.status()}`).toContain(d.status());
+
+  // The rest of the shared backend routes, as the same signed-in person.
+  const routes = await page.evaluate(async (id) => {
+    const post = (u: string) => fetch(u, { method: "POST" });
+    const rejoin = await post(`/api/tele/calls/${id}/join`);
+    const token = await post("/api/tele/token");
+    const messages = await fetch(`/api/tele/calls/${id}/messages?limit=5`);
+    const badId = await post("/api/tele/calls/not-a-uuid/join");
+    return {
+      rejoin: rejoin.status, rejoinCall: ((await rejoin.json()) as { call?: { id: string } }).call?.id,
+      token: token.status, tokenBody: Object.keys(await token.json()).sort(),
+      messages: messages.status, hasMessages: Array.isArray(((await messages.json()) as { messages?: unknown }).messages),
+      badId: badId.status, badIdCode: ((await badId.json()) as { error: { code: string } }).error.code,
+    };
+  }, callId);
+  expect(routes).toEqual({
+    rejoin: 200, rejoinCall: callId, token: 200, tokenBody: ["expires_at", "token"],
+    messages: 200, hasMessages: true, badId: 404, badIdCode: "not_found",
+  });
 
   // Leaving navigates to leaveHref with the router.
   await call.locator('[part~="leave"]').click();

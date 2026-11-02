@@ -41,25 +41,107 @@ no build step. `@tele/call-ui` builds itself in a `prepare` script when npm fetc
 
 ## Your backend
 
-The components call these endpoints on your own origin by default. Each one forwards to Tele with the
-person's user token and returns Tele's status and JSON body as is, including error bodies
-(`{"error": {"code": "...", "message": "..."}}`).
+The components call your own origin, using the shared Tele backend routes (prefix `/api/tele`). Each route
+forwards to Tele as the signed-in person and returns Tele's status and JSON body as is.
 
-| Default URL | Method | Forwards to | Used by |
+| Method | Route | Does | Used here by |
 |---|---|---|---|
-| `/api/tele/invites/{code}` | GET | `GET /v1/invites/{code}` | `TeleInvitePreview`, `TeleJoinPage` |
-| `/api/tele/invites/{code}/join` | POST | `POST /v1/invites/{code}/join` | `TeleJoinPage` |
-| `chatHistoryUrl`, e.g. `/api/tele/calls/{callId}/messages` | GET | `GET /v1/calls/{id}/messages` | optional |
-| `diagnosticsUrl`, e.g. `/api/tele/calls/{callId}/diagnostics` | POST | `POST /v1/calls/{id}/diagnostics` (body unchanged) | optional |
-| `recordingUrl`, e.g. `/api/tele/calls/{callId}/recording/{action}` | POST | `POST /v1/calls/{id}/recording/start` or `/stop` | optional, hosts |
-| `endForAllUrl`, e.g. `/api/tele/calls/{callId}/end` | POST | `POST /v1/calls/{id}/end` | optional, hosts |
+| POST | `/api/tele/token` | user token for the signed-in person, `{"token", "expires_at"}` | not used by this package (native apps) |
+| GET | `/api/tele/invites/{code}` | invite preview, with the person's user token | `TeleInvitePreview`, `TeleJoinPage` (default `previewUrl`) |
+| POST | `/api/tele/invites/{code}/join` | invite join, with the person's user token | `TeleJoinPage` first join (default `joinUrl`) |
+| POST | `/api/tele/calls/{id}/join` | call join, service token with `user: {user_id, ip, user_agent, name?, team?}` | `TeleJoinPage` rejoins (default `rejoinUrl`) |
+| GET | `/api/tele/calls/{id}/messages` | saved chat (`after`, `limit` passed through) | `chatHistoryUrl={DEFAULT_CHAT_HISTORY_URL}` |
+| POST | `/api/tele/calls/{id}/diagnostics` | forwards the call UI's diagnostics body | `diagnosticsUrl={DEFAULT_DIAGNOSTICS_URL}` |
 
-URL templates take `{code}`, `{callId}` (from the join response) and `{action}` (`start` or `stop`). Values are
-URL-encoded. Requests are `same-origin` with credentials, so your session cookie goes along; add headers such
-as a CSRF token with `fetchInit`.
+The defaults are exported as `DEFAULT_PREVIEW_URL`, `DEFAULT_JOIN_URL`, `DEFAULT_CALL_JOIN_URL`,
+`DEFAULT_CHAT_HISTORY_URL` and `DEFAULT_DIAGNOSTICS_URL`. Chat history and diagnostics are opt in: pass the
+constants (or your own templates) to turn them on. URL templates take `{code}` and `{callId}` (from the join
+response). Values are URL-encoded. Requests are `same-origin` with credentials, so your session cookie goes
+along; add headers such as a CSRF token with `fetchInit`.
 
-Recording and "End for all" buttons only appear for hosts (the join response's `role`), and only when you give
-the endpoint. Still check on your backend that the person may do it: a visible button is not authorization.
+**Errors** always have Tele's shape, `{"error": {"code": "...", "message": "..."}}`, including the backend's
+own. The components show friendly English or Bangla text for them:
+
+| Backend answers | When |
+|---|---|
+| `401 unauthenticated` | the person is not signed in |
+| Tele's 4xx, unchanged | Tele refused (`not_invited`, `too_early`, `call_full`, ...) |
+| `502 upstream_auth` | Tele answered 401 (the backend's key or secret is wrong) |
+| `502 upstream_error` | Tele answered 5xx |
+| `503 upstream_timeout` | Tele did not answer in time |
+| `502 upstream_unreachable` | Tele could not be reached |
+| `404 not_found` / `invite_not_found` | a malformed call id or invite code |
+
+**IP addresses.** Tele records the request's peer IP for user-token calls and trusts no customer proxy on hosted
+Tele. So a call-id join, a service-token join that carries the person's IP, records the right IP. An invite join
+through your backend records the backend's IP. Browsers can't avoid that, because Tele sends no CORS headers,
+so a web page can't call Tele itself. (Native apps can call `POST /v1/invites/{code}/join` directly with a user
+token from `/api/tele/token`.) That is why `<TeleJoinPage>` joins through the invite only the first time:
+after a successful join it knows the call id, and every rejoin (the call screen's Rejoin, or `retry` from
+`renderError`) goes through `/api/tele/calls/{callId}/join`. Set `rejoinUrl` on `<TeleCallRoom>` for the same
+behaviour.
+
+Recording and "End for all" are not part of the shared routes. If your backend has endpoints for them, pass
+`recordingUrl` (with `{callId}` and `{action}`, `start` or `stop`) and `endForAllUrl`. Their buttons only
+appear for hosts (the join response's `role`). Still check on your backend that the person may do it: a visible
+button is not authorization.
+
+## Backends
+
+These serve exactly the routes above, so the components work with their defaults.
+
+**tele-fastapi.** `tele_token_router` serves `POST /api/tele/token` and `tele_join_router` serves the invite,
+call join, messages and diagnostics routes. `current_user` is your own authentication: return a `TeleUser`, or
+raise `HTTPException(401)`.
+
+```python
+import os
+from fastapi import FastAPI, HTTPException, Request
+from tele_fastapi import AsyncTeleClient, TeleSigner, TeleUser
+from tele_fastapi.fastapi import tele_join_router, tele_lifespan, tele_token_router
+
+signer = TeleSigner(os.environ["TELE_API_KEY"], os.environ["TELE_API_SECRET"])
+app = FastAPI(lifespan=tele_lifespan(lambda: AsyncTeleClient(signer)))
+
+def current_user(request: Request) -> TeleUser:
+    user = request.session.get("user")
+    if not user:
+        raise HTTPException(401, "sign in first")
+    return TeleUser(id=user["id"], name=user["name"])
+
+app.include_router(tele_token_router(signer, current_user))  # POST /api/tele/token
+app.include_router(tele_join_router(current_user))           # /api/tele/invites/..., /api/tele/calls/...
+```
+
+**tele-go.** The runnable net/http backend in `examples/backend` registers the same routes. Copy it and replace
+its `currentUser` with your session:
+
+```go
+mux.HandleFunc("POST /api/tele/token", s.signedIn(s.token))
+mux.HandleFunc("GET /api/tele/invites/{code}", s.signedIn(s.previewInvite))
+mux.HandleFunc("POST /api/tele/invites/{code}/join", s.signedIn(s.joinInvite))
+mux.HandleFunc("POST /api/tele/calls/{id}/join", s.signedIn(s.joinCall))
+mux.HandleFunc("GET /api/tele/calls/{id}/messages", s.signedIn(s.messages))
+mux.HandleFunc("POST /api/tele/calls/{id}/diagnostics", s.signedIn(s.diagnostics))
+```
+
+```bash
+TELE_API_KEY=... TELE_API_SECRET=... go run ./examples/backend
+```
+
+Then, on the Next.js side:
+
+```tsx
+<TeleJoinPage code={code} chatHistoryUrl={DEFAULT_CHAT_HISTORY_URL} diagnosticsUrl={DEFAULT_DIAGNOSTICS_URL} />
+```
+
+If the backend runs on another origin, proxy `/api/tele/*` to it with a Next.js rewrite. The session cookie then
+stays same-origin:
+
+```ts
+// next.config.ts
+export default { rewrites: async () => [{ source: "/api/tele/:path*", destination: "http://localhost:3000/api/tele/:path*" }] };
+```
 
 ## Components
 
@@ -77,22 +159,24 @@ The preview card, then the call room once the person presses **Join**.
   layout="speaker"
   features="lobby chat screenshare devices recording-indicator"
   previewUrl="/api/tele/invites/{code}"          // default
-  joinUrl="/api/tele/invites/{code}/join"        // default
-  chatHistoryUrl="/api/tele/calls/{callId}/messages"
-  diagnosticsUrl="/api/tele/calls/{callId}/diagnostics"
-  recordingUrl="/api/tele/calls/{callId}/recording/{action}"
-  endForAllUrl="/api/tele/calls/{callId}/end"
+  joinUrl="/api/tele/invites/{code}/join"        // default, the first join
+  rejoinUrl="/api/tele/calls/{callId}/join"      // default, every rejoin
+  chatHistoryUrl={DEFAULT_CHAT_HISTORY_URL}      // /api/tele/calls/{callId}/messages
+  diagnosticsUrl={DEFAULT_DIAGNOSTICS_URL}       // /api/tele/calls/{callId}/diagnostics
+  recordingUrl="/api/my/calls/{callId}/recording/{action}"  // your own endpoint, optional
+  endForAllUrl="/api/my/calls/{callId}/end"                 // your own endpoint, optional
   leaveHref="/calls"
   theme={{ accent: "#0a7cff", radius: "8px" }}
 />
 ```
 
-It takes every `TeleCallRoom` prop (except `joinUrl`, `getJoin` and `errorStrings`), plus:
+It takes every `TeleCallRoom` prop (except `joinUrl`, `getJoin`, `rejoinUrl` and `errorStrings`), plus:
 
 | Prop | |
 |---|---|
 | `code` | The invite code. Required. |
 | `previewUrl`, `joinUrl` | Endpoint templates, defaults above. |
+| `rejoinUrl` | The call-id join for rejoins after the first invite join. Default `/api/tele/calls/{callId}/join`; `false` rejoins through the invite (which records your backend's IP). |
 | `preview` | An `InvitePreview` you already loaded, for example in a server component. Skips the first fetch. |
 | `inviteStrings` | Overrides for the card and join-error texts (`InviteStrings`). |
 | `previewExtra` | Content inside the card, under the title. |
@@ -128,6 +212,7 @@ export function Room({ callId }: { callId: string }) {
 | Prop | |
 |---|---|
 | `joinUrl` | Your join endpoint, POSTed to. Or: |
+| `rejoinUrl` | Optional. Once a `joinUrl` join succeeded, later joins POST here with `{callId}` filled in, for example `DEFAULT_CALL_JOIN_URL`. |
 | `getJoin` | Your own `() => Promise<JoinResponse>`. Reject with a Tele error object to show its message. |
 | `fetchInit` | Extra `RequestInit` for `joinUrl` and the endpoint URLs. |
 | `features` | Array or space-separated: `lobby`, `chat`, `screenshare`, `devices`, `recording-indicator`. Default all. |
@@ -187,8 +272,9 @@ What it says for each `reason.code`:
 | `invite_expired`, `invite_revoked`, `invite_exhausted` | This link is no longer valid. | এই লিংকটি আর বৈধ নয়। |
 | `invite_not_found` (404) | This invite link isn't valid. | এই আমন্ত্রণ লিংকটি সঠিক নয়। |
 
-Join errors also cover `call_full`, `rate_limited`, `unauthenticated`, `forbidden`, `not_found` and
-`network_error`, `bad_response` and `internal`. Unknown codes show the error's own message (Tele's `message`). For `too_early`, the card reloads the preview when the
+Join errors also cover `call_full`, `rate_limited`, `unauthenticated`, `forbidden`, `not_found`,
+`network_error`, `bad_response`, `internal`, and the backend's `upstream_auth`, `upstream_error`,
+`upstream_timeout` and `upstream_unreachable`. Unknown codes show the error's own message (Tele's `message`). For `too_early`, the card reloads the preview when the
 call opens, so Join turns on without a refresh. If the reader's clock runs ahead of Tele's and the reload still
 says `too_early`, it retries after 1, 2, 4 ... up to 30 seconds until the call is open.
 
@@ -215,7 +301,7 @@ These are plain functions, usable in server and client code.
 | `TeleApiError`, `errorFromResponse(res)`, `asTeleError(e)` | Tele error handling. Non-JSON failures get `code: "bad_response"`, network failures `network_error`. |
 | `reasonMessage(code, { lang, opensAt, strings })`, `inviteStrings`, `INVITE_STRINGS`, `resolveLang`, `formatTime`, `formatCountdown` | The texts. |
 | `resolveTheme(theme, style)`, `fillUrl(template, vars)` | |
-| `DEFAULT_PREVIEW_URL`, `DEFAULT_JOIN_URL` | |
+| `DEFAULT_PREVIEW_URL`, `DEFAULT_JOIN_URL`, `DEFAULT_CALL_JOIN_URL`, `DEFAULT_CHAT_HISTORY_URL`, `DEFAULT_DIAGNOSTICS_URL` | |
 
 Types: `JoinResponse`, `JoinCall`, `InvitePreview`, `InviteDenial`, `TeleErrorBody`, `TeleErrorObject`,
 `JoinSource`, `HistoryMessage`, `DiagnosticBody`, `DiagnosticKind`, `ReportDiagnostic`, `EndReason`, `Feature`,
@@ -252,7 +338,8 @@ test suite renders every component with `react-dom/server` in a Node environment
   says is signed in. Don't accept a user id from the browser.
 - Your join, recording and end endpoints decide who may do what. Tele also checks host rights, but your
   backend should not forward requests for people who are not signed in.
-- Invite codes are bearer secrets for `any_client_user` calls. Don't log them.
+- Invite codes: treat them like bearer links. Anyone with the code can preview the call and, if the access
+  policy allows, join it. Don't log them.
 - The example app's `app/api/` routes and `lib/tele-dev.ts` are a local stand-in for your backend, off unless
   `TELE_EXAMPLE_PROXY=1`, and they refuse any request whose `Host` is not localhost. Don't deploy them.
 

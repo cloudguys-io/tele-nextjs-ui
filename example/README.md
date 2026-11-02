@@ -2,7 +2,7 @@
 
 A minimal Next.js App Router app using `@tele/nextjs-ui`: `app/call/[code]/page.tsx` renders `<TeleJoinPage>`.
 
-The route handlers under `app/api/` and `lib/tele-dev.ts` are **example only**: they stand in for your real
+The route handlers under `app/api/tele/` and `lib/tele-dev.ts` are **example only**. They serve the shared Tele backend routes (token, invite preview and join, call-id join, messages, diagnostics), as tele-fastapi's routers and tele-go's example backend do: they stand in for your real
 backend so the example can talk to a Tele API. They sign user tokens with `TELE_API_KEY` / `TELE_API_SECRET`
 from the environment and identify people by a random cookie. In your app, use your own session and a Tele
 server SDK, and keep the secret on the server. The proxy also refuses requests whose `Host` isn't localhost.
@@ -25,4 +25,4 @@ npm run e2e
 ```
 
 It opens an invite link, checks the preview, joins with fake camera and microphone, waits for
-`phase === "live"`, and leaves.
+`phase === "live"`, checks the call-id rejoin, token and messages routes, and leaves.
