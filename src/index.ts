@@ -15,6 +15,9 @@ export {
   fillUrl,
   DEFAULT_JOIN_URL,
   DEFAULT_PREVIEW_URL,
+  DEFAULT_CALL_JOIN_URL,
+  DEFAULT_CHAT_HISTORY_URL,
+  DEFAULT_DIAGNOSTICS_URL,
 } from "./fetchers.js";
 export { TeleApiError, errorFromResponse, asTeleError } from "./errors.js";
 export {

@@ -29,6 +29,10 @@ const en = {
   network_error: "Couldn't reach the server. Check your connection and try again.",
   bad_response: "The server sent an answer we couldn't read. Try again.",
   internal: "Something went wrong on our side. Try again in a moment.",
+  upstream_auth: "The call service didn't accept this app's credentials. Try again later.",
+  upstream_error: "The call service is having trouble. Try again in a moment.",
+  upstream_timeout: "The call service took too long to answer. Try again.",
+  upstream_unreachable: "Couldn't reach the call service. Try again in a moment.",
   fallback: "Couldn't load this call.",
 };
 
@@ -63,6 +67,10 @@ const bn: InviteStrings = {
   network_error: "সার্ভারে পৌঁছানো যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।",
   bad_response: "সার্ভারের উত্তর পড়া যায়নি। আবার চেষ্টা করুন।",
   internal: "আমাদের দিকে একটি সমস্যা হয়েছে। একটু পরে আবার চেষ্টা করুন।",
+  upstream_auth: "কল সার্ভিস এই অ্যাপের পরিচয় গ্রহণ করেনি। পরে আবার চেষ্টা করুন।",
+  upstream_error: "কল সার্ভিসে সমস্যা হচ্ছে। একটু পরে আবার চেষ্টা করুন।",
+  upstream_timeout: "কল সার্ভিস উত্তর দিতে অনেক দেরি করেছে। আবার চেষ্টা করুন।",
+  upstream_unreachable: "কল সার্ভিসে পৌঁছানো যায়নি। একটু পরে আবার চেষ্টা করুন।",
   fallback: "কলটি লোড করা যায়নি।",
 };
 
@@ -103,6 +111,7 @@ export function formatCountdown(seconds: number): string {
 const CODES = new Set<string>([
   "too_late", "call_ended", "call_cancelled", "not_invited", "invite_expired", "invite_revoked", "invite_exhausted",
   "invite_not_found", "not_found", "call_full", "rate_limited", "unauthenticated", "forbidden", "network_error", "bad_response", "internal",
+  "upstream_auth", "upstream_error", "upstream_timeout", "upstream_unreachable",
 ]);
 
 /**

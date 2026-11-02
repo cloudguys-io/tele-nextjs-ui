@@ -12,7 +12,10 @@ import {
   fetchInvitePreview,
   fillUrl,
   DEFAULT_JOIN_URL,
-  DEFAULT_PREVIEW_URL
+  DEFAULT_PREVIEW_URL,
+  DEFAULT_CALL_JOIN_URL,
+  DEFAULT_CHAT_HISTORY_URL,
+  DEFAULT_DIAGNOSTICS_URL
 } from "./fetchers.js";
 import { TeleApiError, errorFromResponse, asTeleError } from "./errors.js";
 import {
@@ -25,6 +28,9 @@ import {
 } from "./messages.js";
 import { resolveTheme } from "./theme.js";
 export {
+  DEFAULT_CALL_JOIN_URL,
+  DEFAULT_CHAT_HISTORY_URL,
+  DEFAULT_DIAGNOSTICS_URL,
   DEFAULT_JOIN_URL,
   DEFAULT_PREVIEW_URL,
   INVITE_STRINGS,

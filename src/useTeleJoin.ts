@@ -3,7 +3,7 @@
 // what happened: the join response, or the error with a friendly message in the chosen language.
 import { useCallback, useInsertionEffect, useMemo, useRef, useState } from "react";
 import { TeleApiError, asTeleError } from "./errors.js";
-import { createJoinFetcher } from "./fetchers.js";
+import { createJoinFetcher, fillUrl } from "./fetchers.js";
 import { reasonMessage, type InviteStrings } from "./messages.js";
 import type { JoinResponse } from "./types.js";
 
@@ -12,6 +12,12 @@ export type UseTeleJoinOptions = {
   joinUrl?: string;
   /** Extra fetch options for `joinUrl`, such as headers. */
   fetchInit?: RequestInit;
+  /**
+   * After a successful join through `joinUrl`, later joins (Rejoin, retry) POST here instead, with `{callId}`
+   * filled in from the first join response. Use the call-id route (`/api/tele/calls/{callId}/join`): it carries
+   * the person's IP, while an invite join through a backend records the backend's IP.
+   */
+  rejoinUrl?: string;
   /** Your own join function, instead of `joinUrl`. Reject with a Tele error object to show its message. */
   getJoin?: () => Promise<JoinResponse>;
   /** Language of the friendly error text. Default `en`. */
@@ -45,16 +51,20 @@ export function useTeleJoin(options: UseTeleJoinOptions): TeleJoinState {
   const [join, setJoin] = useState<JoinResponse | null>(null);
   const [error, setError] = useState<TeleApiError | Error | null>(null);
   const run = useRef(0);
+  // The call of the last successful join; kept across reset() so a retry rejoins by call id.
+  const joinedCall = useRef<string | null>(null);
 
   const getJoin = useCallback(async () => {
     const o = latest.current;
-    const source = o.getJoin ?? (o.joinUrl ? createJoinFetcher(o.joinUrl, o.fetchInit) : null);
+    const url = o.joinUrl && o.rejoinUrl && joinedCall.current ? fillUrl(o.rejoinUrl, { callId: joinedCall.current }) : o.joinUrl;
+    const source = o.getJoin ?? (url ? createJoinFetcher(url, o.fetchInit) : null);
     const id = ++run.current;
     setStatus("joining");
     setError(null);
     try {
       if (!source) throw new Error("useTeleJoin: pass joinUrl or getJoin");
       const res = await source();
+      joinedCall.current = res.call.id;
       if (id === run.current) {
         setJoin(res);
         setStatus("joined");

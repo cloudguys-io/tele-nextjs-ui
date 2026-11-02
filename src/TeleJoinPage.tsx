@@ -2,7 +2,7 @@
 // <TeleJoinPage>: everything an `app/call/[code]/page.tsx` needs. It shows the invite preview, and once the
 // person presses Join, the call room (with its own lobby for camera and microphone).
 import { useState, type CSSProperties, type ReactNode } from "react";
-import { DEFAULT_JOIN_URL, fillUrl } from "./fetchers.js";
+import { DEFAULT_CALL_JOIN_URL, DEFAULT_JOIN_URL, fillUrl } from "./fetchers.js";
 import type { InviteStrings } from "./messages.js";
 import { CSS, STYLE_HREF } from "./styles.js";
 import { TeleCallRoom, type TeleCallRoomProps } from "./TeleCallRoom.js";
@@ -10,13 +10,18 @@ import { TeleInvitePreview } from "./TeleInvitePreview.js";
 import { resolveTheme } from "./theme.js";
 import type { InvitePreview } from "./types.js";
 
-export type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | "errorStrings"> & {
+export type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | "errorStrings" | "rejoinUrl"> & {
   /** The invite code from the route, for example `params.code`. */
   code: string;
   /** Your endpoint for `GET /v1/invites/{code}`. Default `/api/tele/invites/{code}`. */
   previewUrl?: string;
   /** Your endpoint for `POST /v1/invites/{code}/join`. Default `/api/tele/invites/{code}/join`. */
   joinUrl?: string;
+  /**
+   * Your call-id join endpoint for rejoins after the first invite join. Default `/api/tele/calls/{callId}/join`.
+   * Pass `false` to always rejoin through the invite.
+   */
+  rejoinUrl?: string | false;
   /** A preview you already have. Skips the first fetch. */
   preview?: InvitePreview;
   /** Label overrides for the preview card and join errors. */
@@ -32,7 +37,7 @@ export type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | 
 
 export function TeleJoinPage(props: TeleJoinPageProps) {
   const {
-    code, previewUrl, joinUrl = DEFAULT_JOIN_URL, preview, inviteStrings, previewExtra, previewClassName, previewStyle,
+    code, previewUrl, joinUrl = DEFAULT_JOIN_URL, rejoinUrl = DEFAULT_CALL_JOIN_URL, preview, inviteStrings, previewExtra, previewClassName, previewStyle,
     onJoinClick, className, style, ...room
   } = props;
   const [joining, setJoining] = useState(false);
@@ -44,6 +49,7 @@ export function TeleJoinPage(props: TeleJoinPageProps) {
         <TeleCallRoom
           {...room}
           joinUrl={fillUrl(joinUrl, { code })}
+          rejoinUrl={rejoinUrl === false ? undefined : rejoinUrl}
           errorStrings={inviteStrings}
           className={["tele-room", className].filter(Boolean).join(" ")}
           style={style}

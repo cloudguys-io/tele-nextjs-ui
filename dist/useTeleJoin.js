@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useInsertionEffect, useMemo, useRef, useState } from "react";
 import { TeleApiError, asTeleError } from "./errors.js";
-import { createJoinFetcher } from "./fetchers.js";
+import { createJoinFetcher, fillUrl } from "./fetchers.js";
 import { reasonMessage } from "./messages.js";
 function useTeleJoin(options) {
   const latest = useRef(options);
@@ -12,15 +12,18 @@ function useTeleJoin(options) {
   const [join, setJoin] = useState(null);
   const [error, setError] = useState(null);
   const run = useRef(0);
+  const joinedCall = useRef(null);
   const getJoin = useCallback(async () => {
     const o = latest.current;
-    const source = o.getJoin ?? (o.joinUrl ? createJoinFetcher(o.joinUrl, o.fetchInit) : null);
+    const url = o.joinUrl && o.rejoinUrl && joinedCall.current ? fillUrl(o.rejoinUrl, { callId: joinedCall.current }) : o.joinUrl;
+    const source = o.getJoin ?? (url ? createJoinFetcher(url, o.fetchInit) : null);
     const id = ++run.current;
     setStatus("joining");
     setError(null);
     try {
       if (!source) throw new Error("useTeleJoin: pass joinUrl or getJoin");
       const res = await source();
+      joinedCall.current = res.call.id;
       if (id === run.current) {
         setJoin(res);
         setStatus("joined");

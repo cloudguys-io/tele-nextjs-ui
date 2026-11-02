@@ -9,6 +9,18 @@ export const DEFAULT_PREVIEW_URL = "/api/tele/invites/{code}";
 /** The default join endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
 export const DEFAULT_JOIN_URL = "/api/tele/invites/{code}/join";
 
+/**
+ * The call-id join endpoint of the shared backend convention (a service-token join that carries the person's
+ * IP). Used for rejoins after the first invite join. `{callId}` is replaced.
+ */
+export const DEFAULT_CALL_JOIN_URL = "/api/tele/calls/{callId}/join";
+
+/** Saved chat (`GET /v1/calls/{id}/messages`) in the shared backend convention. Opt in with `chatHistoryUrl`. */
+export const DEFAULT_CHAT_HISTORY_URL = "/api/tele/calls/{callId}/messages";
+
+/** Diagnostics (`POST /v1/calls/{id}/diagnostics`) in the shared backend convention. Opt in with `diagnosticsUrl`. */
+export const DEFAULT_DIAGNOSTICS_URL = "/api/tele/calls/{callId}/diagnostics";
+
 /** Replaces `{name}` placeholders with URL-encoded values. Unknown placeholders are left as they are. */
 export function fillUrl(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (m, k: string) => (k in vars ? encodeURIComponent(vars[k] as string) : m));

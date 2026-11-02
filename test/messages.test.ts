@@ -26,6 +26,12 @@ describe("messages", () => {
     for (const c of ["too_late", "call_ended"]) expect(reasonMessage(c)).toBe("This call has ended.");
     for (const c of ["invite_expired", "invite_revoked", "invite_exhausted"]) expect(reasonMessage(c)).toBe("This link is no longer valid.");
     expect(reasonMessage("call_full")).toMatch(/full/);
+    expect(reasonMessage("unauthenticated")).toBe("Your session has expired. Sign in again.");
+    expect(reasonMessage("unauthenticated", { lang: "bn" })).toBe("আপনার সেশনের মেয়াদ শেষ। আবার সাইন ইন করুন।");
+    for (const c of ["upstream_auth", "upstream_error", "upstream_timeout", "upstream_unreachable"]) {
+      expect(reasonMessage(c)).toMatch(/call service/);
+      expect(reasonMessage(c, { lang: "bn" })).toMatch(/কল সার্ভিস/);
+    }
     expect(reasonMessage("something_new")).toBeUndefined();
     expect(reasonMessage(null)).toBeUndefined();
   });

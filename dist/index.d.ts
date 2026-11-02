@@ -122,6 +122,10 @@ declare const en: {
     network_error: string;
     bad_response: string;
     internal: string;
+    upstream_auth: string;
+    upstream_error: string;
+    upstream_timeout: string;
+    upstream_unreachable: string;
     fallback: string;
 };
 /** Every label used by the invite preview and join page. Placeholders look like `{name}`. */
@@ -184,6 +188,8 @@ type TeleCallRoomProps = {
     joinUrl?: string;
     /** Extra fetch options for joinUrl and the endpoint URLs below, such as headers. */
     fetchInit?: RequestInit;
+    /** Later joins (Rejoin, retry) after a successful `joinUrl` join go here, with `{callId}` filled in. */
+    rejoinUrl?: string;
     /** Your own join function instead of `joinUrl`. */
     getJoin?: () => Promise<JoinResponse>;
     /** `lobby chat screenshare devices recording-indicator` (array or space-separated). Default: all. */
@@ -257,13 +263,18 @@ type TeleInvitePreviewProps = {
 };
 declare function TeleInvitePreview(props: TeleInvitePreviewProps): react.JSX.Element;
 
-type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | "errorStrings"> & {
+type TeleJoinPageProps = Omit<TeleCallRoomProps, "joinUrl" | "getJoin" | "errorStrings" | "rejoinUrl"> & {
     /** The invite code from the route, for example `params.code`. */
     code: string;
     /** Your endpoint for `GET /v1/invites/{code}`. Default `/api/tele/invites/{code}`. */
     previewUrl?: string;
     /** Your endpoint for `POST /v1/invites/{code}/join`. Default `/api/tele/invites/{code}/join`. */
     joinUrl?: string;
+    /**
+     * Your call-id join endpoint for rejoins after the first invite join. Default `/api/tele/calls/{callId}/join`.
+     * Pass `false` to always rejoin through the invite.
+     */
+    rejoinUrl?: string | false;
     /** A preview you already have. Skips the first fetch. */
     preview?: InvitePreview;
     /** Label overrides for the preview card and join errors. */
@@ -283,6 +294,12 @@ type UseTeleJoinOptions = {
     joinUrl?: string;
     /** Extra fetch options for `joinUrl`, such as headers. */
     fetchInit?: RequestInit;
+    /**
+     * After a successful join through `joinUrl`, later joins (Rejoin, retry) POST here instead, with `{callId}`
+     * filled in from the first join response. Use the call-id route (`/api/tele/calls/{callId}/join`): it carries
+     * the person's IP, while an invite join through a backend records the backend's IP.
+     */
+    rejoinUrl?: string;
     /** Your own join function, instead of `joinUrl`. Reject with a Tele error object to show its message. */
     getJoin?: () => Promise<JoinResponse>;
     /** Language of the friendly error text. Default `en`. */
@@ -331,6 +348,15 @@ declare function useInvitePreview(code: string, options?: UseInvitePreviewOption
 declare const DEFAULT_PREVIEW_URL = "/api/tele/invites/{code}";
 /** The default join endpoint on your backend. `{code}` is replaced with the URL-encoded invite code. */
 declare const DEFAULT_JOIN_URL = "/api/tele/invites/{code}/join";
+/**
+ * The call-id join endpoint of the shared backend convention (a service-token join that carries the person's
+ * IP). Used for rejoins after the first invite join. `{callId}` is replaced.
+ */
+declare const DEFAULT_CALL_JOIN_URL = "/api/tele/calls/{callId}/join";
+/** Saved chat (`GET /v1/calls/{id}/messages`) in the shared backend convention. Opt in with `chatHistoryUrl`. */
+declare const DEFAULT_CHAT_HISTORY_URL = "/api/tele/calls/{callId}/messages";
+/** Diagnostics (`POST /v1/calls/{id}/diagnostics`) in the shared backend convention. Opt in with `diagnosticsUrl`. */
+declare const DEFAULT_DIAGNOSTICS_URL = "/api/tele/calls/{callId}/diagnostics";
 /** Replaces `{name}` placeholders with URL-encoded values. Unknown placeholders are left as they are. */
 declare function fillUrl(template: string, vars: Record<string, string>): string;
 /**
@@ -356,5 +382,5 @@ declare function createEndForAll(template: string, callId: () => string | undefi
 /** GETs an invite preview from your endpoint, which forwards `GET /v1/invites/{code}`. */
 declare function fetchInvitePreview<T>(url: string, init?: RequestInit): Promise<T>;
 
-export { DEFAULT_JOIN_URL, DEFAULT_PREVIEW_URL, INVITE_STRINGS, TeleApiError, TeleCallRoom, TeleInvitePreview, TeleJoinPage, asTeleError, createChatHistoryLoader, createDiagnosticsReporter, createEndForAll, createJoinFetcher, createRecordingToggle, errorFromResponse, fetchInvitePreview, fillUrl, formatCountdown, formatTime, inviteStrings, reasonMessage, resolveLang, resolveTheme, useInvitePreview, useTeleJoin };
+export { DEFAULT_CALL_JOIN_URL, DEFAULT_CHAT_HISTORY_URL, DEFAULT_DIAGNOSTICS_URL, DEFAULT_JOIN_URL, DEFAULT_PREVIEW_URL, INVITE_STRINGS, TeleApiError, TeleCallRoom, TeleInvitePreview, TeleJoinPage, asTeleError, createChatHistoryLoader, createDiagnosticsReporter, createEndForAll, createJoinFetcher, createRecordingToggle, errorFromResponse, fetchInvitePreview, fillUrl, formatCountdown, formatTime, inviteStrings, reasonMessage, resolveLang, resolveTheme, useInvitePreview, useTeleJoin };
 export type { InviteDenial, InvitePreview, InvitePreviewState, InviteStrings, JoinCall, JoinSource, Lang, TeleCallRoomHandle, TeleCallRoomProps, TeleChatDetail, TeleErrorBody, TeleErrorDetail, TeleErrorObject, TeleInvitePreviewProps, TeleJoinPageProps, TeleJoinState, TeleJoinStatus, TeleJoinedDetail, TeleLeaveDetail, TeleParticipantDetail, TeleTheme, ThemeProp, UseInvitePreviewOptions, UseTeleJoinOptions };

@@ -18,6 +18,27 @@ describe("useTeleJoin", () => {
     expect(f.mock.calls[0]![1]!.method).toBe("POST");
   });
 
+  it("rejoins through rejoinUrl after the first join, also after reset", async () => {
+    const f = mockFetch(() => json(JOIN));
+    const { result } = renderHook(() => useTeleJoin({ joinUrl: "/api/tele/invites/abc/join", rejoinUrl: "/api/tele/calls/{callId}/join" }));
+    await act(async () => { await result.current.getJoin(); });
+    await act(async () => { await result.current.getJoin(); });
+    act(() => result.current.reset());
+    await act(async () => { await result.current.getJoin(); });
+    expect(f.mock.calls.map((c) => c[0])).toEqual([
+      "/api/tele/invites/abc/join", "/api/tele/calls/call-1/join", "/api/tele/calls/call-1/join",
+    ]);
+  });
+
+  it("keeps using joinUrl until a join succeeds", async () => {
+    let n = 0;
+    const f = mockFetch(() => (n++ === 0 ? json({ error: { code: "call_full", message: "full" } }, 409) : json(JOIN)));
+    const { result } = renderHook(() => useTeleJoin({ joinUrl: "/inv", rejoinUrl: "/calls/{callId}/join" }));
+    await act(async () => { await result.current.getJoin().catch(() => {}); });
+    await act(async () => { await result.current.getJoin(); });
+    expect(f.mock.calls.map((c) => c[0])).toEqual(["/inv", "/inv"]);
+  });
+
   it("keeps getJoin stable across renders and uses the latest source", async () => {
     const a = vi.fn(async () => JOIN);
     const b = vi.fn(async () => ({ ...JOIN, grant_id: "g-2" }));

@@ -1,6 +1,9 @@
 import { headersObject, requestJson, TeleApiError } from "./errors.js";
 const DEFAULT_PREVIEW_URL = "/api/tele/invites/{code}";
 const DEFAULT_JOIN_URL = "/api/tele/invites/{code}/join";
+const DEFAULT_CALL_JOIN_URL = "/api/tele/calls/{callId}/join";
+const DEFAULT_CHAT_HISTORY_URL = "/api/tele/calls/{callId}/messages";
+const DEFAULT_DIAGNOSTICS_URL = "/api/tele/calls/{callId}/diagnostics";
 function fillUrl(template, vars) {
   return template.replace(/\{(\w+)\}/g, (m, k) => k in vars ? encodeURIComponent(vars[k]) : m);
 }
@@ -51,6 +54,9 @@ function fetchInvitePreview(url, init) {
   return requestJson(url, { method: "GET", ...init });
 }
 export {
+  DEFAULT_CALL_JOIN_URL,
+  DEFAULT_CHAT_HISTORY_URL,
+  DEFAULT_DIAGNOSTICS_URL,
   DEFAULT_JOIN_URL,
   DEFAULT_PREVIEW_URL,
   createChatHistoryLoader,

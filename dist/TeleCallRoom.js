@@ -16,6 +16,7 @@ function TeleCallRoom({ ref, ...props }) {
   const join = useTeleJoin({
     joinUrl: props.joinUrl,
     fetchInit: props.fetchInit,
+    rejoinUrl: props.rejoinUrl,
     getJoin: props.getJoin,
     lang: props.lang,
     friendlyErrors: props.friendlyErrors,

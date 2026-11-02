@@ -45,6 +45,8 @@ export type TeleCallRoomProps = {
   joinUrl?: string;
   /** Extra fetch options for joinUrl and the endpoint URLs below, such as headers. */
   fetchInit?: RequestInit;
+  /** Later joins (Rejoin, retry) after a successful `joinUrl` join go here, with `{callId}` filled in. */
+  rejoinUrl?: string;
   /** Your own join function instead of `joinUrl`. */
   getJoin?: () => Promise<JoinResponse>;
 
@@ -106,6 +108,7 @@ export function TeleCallRoom({ ref, ...props }: TeleCallRoomProps) {
   const join = useTeleJoin({
     joinUrl: props.joinUrl,
     fetchInit: props.fetchInit,
+    rejoinUrl: props.rejoinUrl,
     getJoin: props.getJoin,
     lang: props.lang,
     friendlyErrors: props.friendlyErrors,

@@ -21,6 +21,7 @@ afterEach(() => {
 describe("TeleJoinPage", () => {
   it("shows the preview, then the room joined through the invite", async () => {
     const f = mockFetch((url) => (url.endsWith("/join") ? json(JOIN) : json(preview())));
+
     const onJoinClick = vi.fn();
     render(<TeleJoinPage code="q3V9" lang="en" layout="speaker" leaveHref="/done" onJoinClick={onJoinClick}
       chatHistoryUrl="/api/tele/calls/{callId}/messages" theme={{ accent: "#0a7cff" }} />);
@@ -39,6 +40,11 @@ describe("TeleJoinPage", () => {
     await act(async () => { await p.getJoin(); });
     expect(f.mock.calls.map((c) => `${c[1]!.method} ${c[0]}`)).toEqual(["GET /api/tele/invites/q3V9", "POST /api/tele/invites/q3V9/join"]);
 
+    // The element's Rejoin calls getJoin again: that goes through the call-id route.
+    await act(async () => { await p.getJoin(); });
+    expect(f.mock.calls[2]![0]).toBe("/api/tele/calls/call-1/join");
+    expect(f.mock.calls[2]![1]!.method).toBe("POST");
+
     act(() => p.onLeave!({ reason: "left" }));
     expect(router.push).toHaveBeenCalledWith("/done");
   });
@@ -50,6 +56,14 @@ describe("TeleJoinPage", () => {
     await act(async () => { await last().props.getJoin(); });
     expect(f.mock.calls.map((c) => c[0])).toEqual(["/b/join?code=c%20d"]);
     expect(document.querySelector("tele-call")!.getAttribute("class")).toBe("tele-room tall");
+  });
+
+  it("rejoins through the invite with rejoinUrl={false}", async () => {
+    const f = mockFetch(() => json(JOIN));
+    render(<TeleJoinPage code="c" preview={preview()} rejoinUrl={false} />);
+    act(() => screen.getByRole("button", { name: "Join the call" }).click());
+    await act(async () => { await last().props.getJoin(); await last().props.getJoin(); });
+    expect(f.mock.calls.map((c) => c[0])).toEqual(["/api/tele/invites/c/join", "/api/tele/invites/c/join"]);
   });
 
   it("shows join errors in the chosen language via inviteStrings", async () => {

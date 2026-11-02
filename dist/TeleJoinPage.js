@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { useState } from "react";
-import { DEFAULT_JOIN_URL, fillUrl } from "./fetchers.js";
+import { DEFAULT_CALL_JOIN_URL, DEFAULT_JOIN_URL, fillUrl } from "./fetchers.js";
 import { CSS, STYLE_HREF } from "./styles.js";
 import { TeleCallRoom } from "./TeleCallRoom.js";
 import { TeleInvitePreview } from "./TeleInvitePreview.js";
@@ -11,6 +11,7 @@ function TeleJoinPage(props) {
     code,
     previewUrl,
     joinUrl = DEFAULT_JOIN_URL,
+    rejoinUrl = DEFAULT_CALL_JOIN_URL,
     preview,
     inviteStrings,
     previewExtra,
@@ -30,6 +31,7 @@ function TeleJoinPage(props) {
         {
           ...room,
           joinUrl: fillUrl(joinUrl, { code }),
+          rejoinUrl: rejoinUrl === false ? void 0 : rejoinUrl,
           errorStrings: inviteStrings,
           className: ["tele-room", className].filter(Boolean).join(" "),
           style
